@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Network Template: RDS with MySQL engine
+
+Resources:
+  DBSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: WeAreGroupG
+      SubnetIds:
+        - subnet-08941b261aa6c8f6c
+        - subnet-0a597d0ef1f8b310e
+        - subnet-037d0669839212045
+        - subnet-0bb1476060c625fa4
+  DBInstance:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      AllocatedStorage: 65536
+      AllowMajorVersionUpgrade: false
+      DBInstanceClass: db.t2.micro
+      DBName: ecloudgamelley
+      Engine: mysql
+      EngineVersion: 8.0.27
+      MasterUsername: admin
+      MasterUserPassword: GroupGGG
+      MultiAZ: false
+      PubliclyAccessible: true
+      StorageType: gp2
+      VPCSecurityGroups: 
+        - sg-050f617e0fa18c368
+          
+
+
+
+
