@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   Network Template: RDS with MySQL engine
 
@@ -18,7 +18,7 @@ Resources:
       AllocatedStorage: 65536
       AllowMajorVersionUpgrade: false
       DBInstanceClass: db.t2.micro
-      DBName: ecloudgamelley
+      DBName: ecloudformation
       Engine: mysql
       EngineVersion: 8.0.27
       MasterUsername: admin

@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  This template is used to pracitce creating ec2 template for ecloudgamelly
+
+Parameters: 
+  KeyName:
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+Resources:
+  DBSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: WeAreGroupG
+      SubnetIds:
+        - subnet-08941b261aa6c8f6c
+        - subnet-0a597d0ef1f8b310e
+        - subnet-037d0669839212045
+        - subnet-0bb1476060c625fa4
+  DBInstance:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      AllocatedStorage: 30
+      AllowMajorVersionUpgrade: false
+      DBInstanceClass: db.t2.micro
+      DBName: ecloudformation
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      Engine: mysql
+      EngineVersion: 8.0.27
+      MasterUsername: admin
+      MasterUserPassword: GroupGGG
+      MultiAZ: false
+      PubliclyAccessible: true
+      StorageType: gp2
+      VPCSecurityGroups: 
+        - sg-050f617e0fa18c368 
+  EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: 'ami-086dee346cc0be9cf'
+      InstanceType: 't2.micro'
+      KeyName: !Ref KeyName
+      # NetworkInterfaces:
+      #   - AssociatePublicIpAddress: true 
+      SecurityGroupIds:
+        - 'sg-0504bc4137d9db40c'
+      SubnetId: 'subnet-0bb1476060c625fa4' 
+      UserData: 
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          cd /home/ec2-user/ecloudgamelley/question_app/
+          python3 ecloudgamelly.py
+    DependsOn:
+      - "DBInstance"
