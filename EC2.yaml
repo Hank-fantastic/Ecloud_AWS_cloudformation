@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: '2022-03-07'
+Description: 'This template is used to pracitce creating ec2 template for ecloudgamelly'
+Parameters: 
+  KeyName:
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+Resources: 
+  EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageID: 'ami-086dee346cc0be9cf'
+      InstanceType: 't2.micro'
+      KeyName: !Ref KeyName
+      SecurtiyGroupIds:
+        - 'sg-0504bc4137d9db40c'
+      SubnetId: 'subnet-0bb1476060c625fa4' 
+      UserData: !Base64 !sub |
+          #!/bin/bash
+          cd /home/ec2-user/ecloudgamelley/question_app/
+          python3 ecloudgamelly.py
+      
+  
+
+
+
+        
