@@ -34,7 +34,7 @@ Resources:
       StorageType: gp2
       VPCSecurityGroups: 
         - sg-050f617e0fa18c368 
-  EC2Instancenew:
+  EC2Instance:
     Type: 'AWS::EC2::Instance'
     Properties:
       ImageId: 'ami-086dee346cc0be9cf'

@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Network Template: Sample template that creates a VPC with standard design.
+
+Resources:
+    ProjectVPC:
+      Type: AWS::EC2::VPC
+      Properties:
+        CidrBlock: 10.0.0.0/16
+        EnableDnsSupport: true
+        EnableDnsHostnames: true
+        Tags:
+          - 
+            Key: "project"
+            Value: "myProject"
+
+    IGW:
+      Type: AWS::EC2::InternetGateway
+
+    NatGateway:
+      Type: AWS::EC2::NatGateway
+      Properties:
+        ConnectivityType: private
+        SubnetId: 0.0.0.0/0
+  
