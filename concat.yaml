@@ -48,7 +48,10 @@ Resources:
       UserData: 
         Fn::Base64: !Sub |
           #!/bin/bash
-          cd /home/ec2-user/ecloudgamelley/question_app/
+          cd /home/ec2-user/ecloudgamelley/question_app
+          echo mysql+pymysql://admin:GroupGGG@${DBInstance.Endpoint.Address}:3306/ecloudformation > endpoint.txt
+          export SQLALCHEMY_DATABASE_URI = $(cat endpoint.txt)
           python3 ecloudgamelly.py
+          
     DependsOn:
       - "DBInstance"

@@ -1,4 +1,4 @@
-AWSTemplateVersion: '2010-09-09'
+AWSTemplateFormatVersion: '2010-09-09'
 Description: 'This template is used to pracitce creating ec2 template for ecloudgamelly'
 Parameters: 
   KeyName:
