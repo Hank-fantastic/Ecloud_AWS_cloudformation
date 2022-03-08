@@ -2,32 +2,79 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Network Template: RDS with MySQL engine
 
+Parameters:
+  VPCName:
+    Description: vpc settings
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: '^[a-zA-Z][-a-zA-Z0-9]*$'
+
+  Subnets:
+    Description: subnet settings
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: '^[a-zA-Z][-a-zA-Z0-9]*$'
+
+  
+
+  InstanceClass:
+    Description: 'The instance type of database server.'
+    Type: String
+    Default: 'db.t2.micro'
+    AllowedValues:
+    - db.t2.micro
+    - db.t2.small
+    - db.t2.medium
+    - db.t3.micro
+    - db.t3.small
+
+  DB:
+    Description: 'the name of db'
+    Type: String
+    AllowedPattern: '^[a-zA-Z][-a-zA-Z0-9]*$'
+
+  Username:
+    Description: 'db master username'
+    Type: String
+    Default: 'admin'
+
+  Password:
+    Description: 'db master password'
+    Type: String
+    Default: 'GroupGGG'
+
+
+
 Resources:
   DBSubnetGroup:
     Type: 'AWS::RDS::DBSubnetGroup'
     Properties:
       DBSubnetGroupDescription: WeAreGroupG
       SubnetIds:
-        - subnet-08941b261aa6c8f6c
-        - subnet-0a597d0ef1f8b310e
-        - subnet-037d0669839212045
-        - subnet-0bb1476060c625fa4
+        - !Ref ProjectStackName
+        - !Ref ProjectStackName
+        - !Ref ProjectStackName
+        - !Ref ProjectStackName
   DBInstance:
     Type: 'AWS::RDS::DBInstance'
     Properties:
-      AllocatedStorage: 65536
+      AllocatedStorage: 10
       AllowMajorVersionUpgrade: false
-      DBInstanceClass: db.t2.micro
-      DBName: ecloudgamelley
+      DBInstanceClass: !Ref InstanceClass
+      DBName: !Ref DB
       Engine: mysql
       EngineVersion: 8.0.27
-      MasterUsername: admin
-      MasterUserPassword: GroupGGG
+      MasterUsername: !Ref Username
+      MasterUserPassword: !Ref Password
       MultiAZ: false
       PubliclyAccessible: true
       StorageType: gp2
       VPCSecurityGroups: 
-        - sg-050f617e0fa18c368
+        - Fn::ImportValue: !Ref VPCName
+
+
           
 
 
