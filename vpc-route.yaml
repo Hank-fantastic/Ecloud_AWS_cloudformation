@@ -1,0 +1,38 @@
+## Public Route Table
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ProjectVPC      
+      Tags:
+        - 
+          Key: "Name"
+          Value: "Public route table"
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref InternetGateway
+      DestinationCidrBlock: 0.0.0.0/0
+      
+
+  ## Private Route Tables
+
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ProjectVPC     
+      Tags:
+        - 
+          Key: "Name"
+          Value: "Private route table"
+
+  PrivateRoute1:
+    Type: AWS::EC2::Route
+    DependsOn: NatGateway1
+    Properties:
+      RouteTableId:  !Ref PrivateRouteTable1
+      DestinationCidrBlock:  !GetAtt ProjectVPC.CidrBlock
+      NatGatewayId: !Ref NatGateway1
