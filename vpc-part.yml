@@ -31,11 +31,9 @@ Parameters:
       db.t3.micro, db.t3.small, db.t3.medium, db.t3.large,]
     Default: db.t2.micro
 
-
-  AMIID:
-    Type: String
-    Description: Choose your AMI ID
-    Default: ami-086dee346cc0be9cf
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
 
 
 ######################
@@ -390,7 +388,7 @@ Resources:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
       AssociatePublicIpAddress: true
-      ImageId: !Ref AMIID
+      ImageId: !Ref LatestAmiId
       InstanceType: !Ref InstanceType
       KeyName: !Ref KeyName
       SecurityGroups:
@@ -399,7 +397,12 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          cd /home/ec2-user/ecloudgamelley/question_app
+          cd /home/ec2-user
+          wget https://ecloudgamelley.s3.amazonaws.com/question_app.zip
+          unzip question_app.zip
+          cd question_app
+          yum install -y python3-devel gcc mysql-devel mysql-server libmysqlclient-dev
+          pip3 install -r requirements.txt
           echo mysql+pymysql://admin:GroupGGG@${DBInstance.Endpoint.Address}:3306/ecloudformation > endpoint.txt
           export SQLALCHEMY_DATABASE_URI=$(cat endpoint.txt)
           python3 ecloudgamelly.py
@@ -464,7 +467,7 @@ Resources:
     Properties:
       AutoScalingGroupName: !Ref WebServerGroup
       HeartbeatTimeout: 60
-      DefaultResult: abandon
+      DefaultResult: ABANDON
       LifecycleHookName: !Sub "${WebServerGroup}-LCH"
       LifecycleTransition: autoscaling:EC2_INSTANCE_TERMINATING
 
@@ -489,13 +492,13 @@ Resources:
         Ref: ApplicationLoadBalancer
       Port: '80'
       Protocol: HTTP
-      Port: '80'
-      Protocol: TCP
+      # Port: '80'
+      # Protocol: TCP
 
   ALBTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      HealthChechEnabled: true
+      HealthCheckEnabled: true
       HealthCheckIntervalSeconds: 15
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
@@ -506,11 +509,11 @@ Resources:
       Protocol: HTTP
       VpcId: !Ref ProjectVPC
 
-Output:
+Outputs:
 
   VPC:
     Description: VPC ID
-    Value: !Ref VPC
+    Value: !Ref ProjectVPC
 
   PublicSubnet1:
     Description: The subnet ID to use for public subnet
