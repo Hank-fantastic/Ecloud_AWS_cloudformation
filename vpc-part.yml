@@ -22,7 +22,6 @@ Parameters:
     Description: Select Instance Type
     AllowedValues: [t2.micro, t2.small, t2.medium, t2.large,
       t3.micro, t3.small, t3.medium, t3.large,]
-    Default: t2.micro
 
   RDSInstanceType:
     Type: String
@@ -34,6 +33,51 @@ Parameters:
   LatestAmiId:
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
     Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+    Description: Choose your AMI ID
+
+  AZ1:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: Choose your Availability Zone for public & private subnet 1
+
+  AZ2:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: Choose your Availability Zone for public & private subnet 2
+
+  PublicSubnet1Cidr:
+    Type: String
+    Description: Choose your IPv4 CIDR for public subnet 1
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.0.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  
+  PublicSubnet2Cidr:
+    Type: String
+    Description: Choose your IPv4 CIDR for public subnet 2
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.1.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  PrivateSubnet1Cidr:
+    Type: String
+    Description: Choose your IPv4 CIDR for private subnet 1
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.128.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  PrivateSubnet2Cidr:
+    Type: String
+    Description: Choose your IPv4 CIDR for private subnet 2
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.129.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
 
 
 ######################
@@ -117,8 +161,8 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref ProjectVPC
-      AvailabilityZone: !Select [ 0, !GetAZs '']
-      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: !Ref AZ1
+      CidrBlock: !Ref PublicSubnet1Cidr
       MapPublicIpOnLaunch: true
       Tags:
         -
@@ -129,8 +173,8 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref ProjectVPC
-      AvailabilityZone: !Select [ 1, !GetAZs '']
-      CidrBlock: 10.0.128.0/24
+      AvailabilityZone: !Ref AZ2
+      CidrBlock: !Ref PublicSubnet2Cidr
       MapPublicIpOnLaunch: true
       Tags:
         -
@@ -142,8 +186,8 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref ProjectVPC
-      AvailabilityZone: !Select [ 0, !GetAZs '']
-      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Ref AZ1
+      CidrBlock: !Ref PrivateSubnet1Cidr
       Tags:
         -
           Key: "Name"
@@ -153,8 +197,8 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref ProjectVPC
-      AvailabilityZone: !Select [ 1, !GetAZs '']
-      CidrBlock: 10.0.129.0/24
+      AvailabilityZone: !Ref AZ2
+      CidrBlock: !Ref PrivateSubnet2Cidr
       Tags:
         -
           Key: "Name"
@@ -368,8 +412,10 @@ Resources:
     Properties:
       AutoScalingGroupName: WebServerGroup
       AvailabilityZones:
-      - !Select [ 0, !GetAZs '' ]
-      - !Select [ 1, !GetAZs '' ]
+      - !Ref AZ1
+      - !Ref AZ2
+      # - !Select [ 0, !GetAZs '' ]
+      # - !Select [ 1, !GetAZs '' ]
       VPCZoneIdentifier:
       - !Ref PublicSubnet1
       - !Ref PublicSubnet2
