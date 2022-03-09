@@ -17,6 +17,26 @@ Parameters:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
     Type: AWS::EC2::KeyPair::KeyName
 
+  InstanceType:
+    Type: String
+    Description: Select Instance Type
+    AllowedValues: [t2.micro, t2.small, t2.medium, t2.large,
+      t3.micro, t3.small, t3.medium, t3.large,]
+    Default: t2.micro
+
+  RDSInstanceType:
+    Type: String
+    Description: Select RDS Instance Type
+    AllowedValues: [db.t2.micro, db.t2.small, db.t2.medium, db.t2.large,
+      db.t3.micro, db.t3.small, db.t3.medium, db.t3.large,]
+    Default: db.t2.micro
+
+
+  AMIID:
+    Type: String
+    Description: Choose your AMI ID
+    Default: ami-086dee346cc0be9cf
+
 
 ######################
 # Resources section
@@ -304,13 +324,12 @@ Resources:
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
-
   DBInstance:
     Type: 'AWS::RDS::DBInstance'
     Properties:
       AllocatedStorage: 30
       AllowMajorVersionUpgrade: false
-      DBInstanceClass: db.t2.micro
+      DBInstanceClass: !Ref RDSInstanceType
       DBName: ecloudformation
       DBSubnetGroupName: !Ref DBSubnetGroup
       Engine: mysql
@@ -371,11 +390,11 @@ Resources:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
       AssociatePublicIpAddress: true
+      ImageId: !Ref AMIID
+      InstanceType: !Ref InstanceType
       KeyName: !Ref KeyName
-      ImageId: 'ami-086dee346cc0be9cf'
       SecurityGroups:
       - !Ref WebSecurityGroup
-      InstanceType: 't2.micro'
       SpotPrice: 0.0045
       UserData:
         Fn::Base64: !Sub |
