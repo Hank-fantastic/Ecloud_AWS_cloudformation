@@ -22,7 +22,6 @@ Parameters:
     Description: Select Instance Type
     AllowedValues: [t2.micro, t2.small, t2.medium, t2.large,
       t3.micro, t3.small, t3.medium, t3.large,]
-    Default: t2.micro
 
   RDSInstanceType:
     Type: String
@@ -33,9 +32,58 @@ Parameters:
 
 
   AMIID:
-    Type: String
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Description: Choose your AMI ID
-    Default: ami-086dee346cc0be9cf
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+
+  AZ1:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: Choose your Availability Zone for public & private subnet 1
+
+  AZ2:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: Choose your Availability Zone for public & private subnet 2
+
+  VPCID:
+    Type: AWS::EC2::VPC::Id
+    Description: Choose your VPC ID
+    Default: 'vpc-3f139646'
+
+  PublicSubnet1Cidr:
+    Type: String
+    Description: Choose your IPv4 CIDR for public subnet 1
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.5.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  
+  PublicSubnet2Cidr:
+    Type: String
+    Description: Choose your IPv4 CIDR for public subnet 2
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.6.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  PrivateSubnet1Cidr:
+    Type: String
+    Description: Choose your IPv4 CIDR for private subnet 1
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.7.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  PrivateSubnet2Cidr:
+    Type: String
+    Description: Choose your IPv4 CIDR for private subnet 2
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.8.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
 
 
 ######################
@@ -67,14 +115,14 @@ Resources:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       InternetGatewayId: !Ref IGW
-      VpcId: !Ref ProjectVPC
+      VpcId: !Ref VPCID
 
 # Public Route Table
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
-      VpcId: !Ref ProjectVPC      
+      VpcId: !Ref VPCID      
       Tags:
         - 
           Key: "Name"
@@ -94,7 +142,7 @@ Resources:
   PrivateRouteTable1:
     Type: AWS::EC2::RouteTable
     Properties:
-      VpcId: !Ref ProjectVPC     
+      VpcId: !Ref VPCID     
       Tags:
         - 
           Key: "Name"
@@ -118,9 +166,9 @@ Resources:
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref ProjectVPC
-      AvailabilityZone: !Select [ 0, !GetAZs '']
-      CidrBlock: 10.0.0.0/24
+      VpcId: !Ref VPCID
+      AvailabilityZone: !Ref AZ1
+      CidrBlock: !Ref PublicSubnet1Cidr
       MapPublicIpOnLaunch: true
       Tags:
         -
@@ -130,9 +178,9 @@ Resources:
   PublicSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref ProjectVPC
-      AvailabilityZone: !Select [ 1, !GetAZs '']
-      CidrBlock: 10.0.128.0/24
+      VpcId: !Ref VPCID
+      AvailabilityZone: !Ref AZ2
+      CidrBlock: !Ref PublicSubnet2Cidr
       MapPublicIpOnLaunch: true
       Tags:
         -
@@ -143,9 +191,9 @@ Resources:
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref ProjectVPC
-      AvailabilityZone: !Select [ 0, !GetAZs '']
-      CidrBlock: 10.0.1.0/24
+      VpcId: !Ref VPCID
+      AvailabilityZone: !Ref AZ1
+      CidrBlock: !Ref PrivateSubnet1Cidr
       Tags:
         -
           Key: "Name"
@@ -154,9 +202,9 @@ Resources:
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref ProjectVPC
-      AvailabilityZone: !Select [ 1, !GetAZs '']
-      CidrBlock: 10.0.129.0/24
+      VpcId: !Ref VPCID
+      AvailabilityZone: !Ref AZ2
+      CidrBlock: !Ref PrivateSubnet2Cidr
       Tags:
         -
           Key: "Name"
@@ -191,14 +239,14 @@ Resources:
   NetworkAclPublic:
     Type: 'AWS::EC2::NetworkAcl'
     Properties:
-      VpcId: !Ref ProjectVPC
+      VpcId: !Ref VPCID
       Tags:
       - Key: "Name"
         Value: "Public"
   NetworkAclPrivate:
     Type: 'AWS::EC2::NetworkAcl'
     Properties:
-      VpcId: !Ref ProjectVPC
+      VpcId: !Ref VPCID
       Tags:
       - Key: "Name"
         Value: "Private"
@@ -275,7 +323,7 @@ Resources:
     Properties:
       GroupName: "Web SG"
       GroupDescription: "Security group with allow ELB"
-      VpcId: !Ref ProjectVPC
+      VpcId: !Ref VPCID
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -292,7 +340,7 @@ Resources:
     Properties:
       GroupName: "ALB SG"
       GroupDescription: "Security group with allow HTTP(s)"
-      VpcId: !Ref ProjectVPC
+      VpcId: !Ref VPCID
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -309,7 +357,7 @@ Resources:
     Properties:
       GroupName: "MySQL SG"
       GroupDescription: "Security group with allow EC2"
-      VpcId: !Ref ProjectVPC
+      VpcId: !Ref VPCID
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 3306
@@ -356,7 +404,9 @@ Resources:
       UserData: 
         Fn::Base64: !Sub |
           #!/bin/bash
-          cd /home/ec2-user/ecloudgamelley/question_app
+          cd /home/ec2-user
+          wget https://ecloudgamelley.s3.amazonaws.com/question_app.zip
+          unzip question_app.zip
           echo mysql+pymysql://admin:GroupGGG@${DBInstance.Endpoint.Address}:3306/ecloudformation > endpoint.txt
           export SQLALCHEMY_DATABASE_URI=$(cat endpoint.txt)
           python3 ecloudgamelly.py
