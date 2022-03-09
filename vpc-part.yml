@@ -261,6 +261,7 @@ Resources:
           FromPort: 80
           ToPort: 80
           SourceSecurityGroupId: !Ref ALBSecurityGroup
+          # CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
@@ -303,6 +304,7 @@ Resources:
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
+
   DBInstance:
     Type: 'AWS::RDS::DBInstance'
     Properties:
@@ -319,28 +321,209 @@ Resources:
       PubliclyAccessible: false
       StorageType: gp2
       VPCSecurityGroups: 
-        - !Ref MySQLSecurityGroup
-  EC2Instance:
-    Type: 'AWS::EC2::Instance'
+      - !Ref MySQLSecurityGroup
+
+  # EC2Instance:
+  #   Type: 'AWS::EC2::Instance'
+  #   Properties:
+  #     ImageId: 'ami-086dee346cc0be9cf'
+  #     InstanceType: 't2.micro'
+  #     KeyName: !Ref KeyName
+  #     # NetworkInterfaces:
+  #     #   - AssociatePublicIpAddress: true 
+  #     SecurityGroupIds:
+  #       - !Ref WebSecurityGroup
+  #     SubnetId: !Ref PublicSubnet1
+  #     UserData: 
+  #       Fn::Base64: !Sub |
+  #         #!/bin/bash
+  #         cd /home/ec2-user/ecloudgamelley/question_app
+  #         echo mysql+pymysql://admin:GroupGGG@${DBInstance.Endpoint.Address}:3306/ecloudformation > endpoint.txt
+  #         export SQLALCHEMY_DATABASE_URI=$(cat endpoint.txt)
+  #         python3 ecloudgamelly.py
+  #   DependsOn:
+  #     - "DBInstance"
+
+    # Auto Scaling Group
+  WebServerGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn: ALBListener
     Properties:
-      ImageId: 'ami-086dee346cc0be9cf'
-      InstanceType: 't2.micro'
+      AutoScalingGroupName: WebServerGroup
+      AvailabilityZones:
+      - !Select [ 0, !GetAZs '' ]
+      - !Select [ 1, !GetAZs '' ]
+      VPCZoneIdentifier:
+      - !Ref PublicSubnet1
+      - !Ref PublicSubnet2
+      LaunchConfigurationName: !Ref LaunchConfig
+      DesiredCapacity: '1'
+      MinSize: '1'
+      MaxSize: '2'
+      TargetGroupARNs: 
+      - Ref: ALBTargetGroup
+      Tags:
+      - Key: Name
+        Value: 'vpc-stack-ASG'
+        PropagateAtLaunch: 'true'
+  
+  LaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      AssociatePublicIpAddress: true
       KeyName: !Ref KeyName
-      # NetworkInterfaces:
-      #   - AssociatePublicIpAddress: true 
-      SecurityGroupIds:
-        - !Ref WebSecurityGroup
-      SubnetId: !Ref PublicSubnet1
-      UserData: 
+      ImageId: 'ami-086dee346cc0be9cf'
+      SecurityGroups:
+      - !Ref WebSecurityGroup
+      InstanceType: 't2.micro'
+      SpotPrice: 0.0045
+      UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
           cd /home/ec2-user/ecloudgamelley/question_app
           echo mysql+pymysql://admin:GroupGGG@${DBInstance.Endpoint.Address}:3306/ecloudformation > endpoint.txt
           export SQLALCHEMY_DATABASE_URI=$(cat endpoint.txt)
           python3 ecloudgamelly.py
-
     DependsOn:
-      - "DBInstance"
+    - "DBInstance"
+  
+  # Scaling Policy
+  WebServerScaleUpPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref 'WebServerGroup'
+      Cooldown: '60'
+      ScalingAdjustment: 2
+
+  WebServerScaleDownPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref 'WebServerGroup'
+      Cooldown: '60'
+      ScalingAdjustment: -1
+  
+  # CloudWatch Alarm
+
+  CPUAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Scale-up if CPU > 75% for 5 minutes
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 75
+      AlarmActions: [!Ref 'WebServerScaleUpPolicy']
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value: !Ref 'WebServerGroup'
+      ComparisonOperator: GreaterThanThreshold
+
+  CPUAlarmLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Scale-down if CPU < 40% for 10 minutes
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 40
+      AlarmActions: [!Ref 'WebServerScaleDownPolicy']
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value: !Ref 'WebServerGroup'
+      ComparisonOperator: LessThanThreshold
+
+  # Life Cycle hook
+
+  LCH:
+    Type: AWS::AutoScaling::LifecycleHook
+    Properties:
+      AutoScalingGroupName: !Ref WebServerGroup
+      HeartbeatTimeout: 60
+      DefaultResult: abandon
+      LifecycleHookName: !Sub "${WebServerGroup}-LCH"
+      LifecycleTransition: autoscaling:EC2_INSTANCE_TERMINATING
+
+  #ALB
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets: 
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref ALBTargetGroup
+      LoadBalancerArn:
+        Ref: ApplicationLoadBalancer
+      Port: '80'
+      Protocol: HTTP
+      Port: '80'
+      Protocol: TCP
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthChechEnabled: true
+      HealthCheckIntervalSeconds: 15
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref ProjectVPC
+
+Output:
+
+  VPC:
+    Description: VPC ID
+    Value: !Ref VPC
+
+  PublicSubnet1:
+    Description: The subnet ID to use for public subnet
+    Value: !Ref PublicSubnet1
+
+  PublicSubnet2:
+    Description: The subnet ID to use for public subnet
+    Value: !Ref PublicSubnet2
+
+  PrivateSubnet1:
+    Description: The subnet ID to use for private subnet
+    Value: !Ref PrivateSubnet1
+
+  PrivateSubnet2:
+    Description: The subnet ID to use for private subnet
+    Value: !Ref PrivateSubnet2
+  
+  WebSG:
+    Description: The subnet ID to use for private subnet
+    Value: !Ref WebSecurityGroup
+
+  ALBSG:
+    Description: The subnet ID to use for private subnet
+    Value: !Ref ALBSecurityGroup
+
+  DBSG:
+    Description: The subnet ID to use for private subnet
+    Value: !Ref MySQLSecurityGroup
+
+  ALBDNSName:
+    Description: ALB's DNS Name
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
 
 
   
