@@ -12,6 +12,10 @@ Parameters:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
 
+  KeyName:
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
 
 
 ######################
@@ -39,11 +43,11 @@ Resources:
   #    ConnectivityType: private
   #    SubnetId: 0.0.0.0/0
 
-  VPCAttachment:
+  VPCGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       InternetGatewayId: !Ref IGW
-      VPCId: !Ref ProjectVPC
+      VpcId: !Ref ProjectVPC
 
 # Public Route Table
 
@@ -76,11 +80,11 @@ Resources:
           Key: "Name"
           Value: "Private route table"
 
-  PrivateRoute1:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId:  !Ref PrivateRouteTable1
-      # DestinationCidrBlock:  !GetAtt ProjectVPC.CidrBlock
+  # PrivateRoute1:
+  #   Type: AWS::EC2::Route
+  #   Properties:
+  #     RouteTableId:  !Ref PrivateRouteTable1
+  #     DestinationCidrBlock:  !GetAtt ProjectVPC.CidrBlock
 
 
 # This template creates:
@@ -169,15 +173,15 @@ Resources:
     Properties:
       VpcId: !Ref ProjectVPC
       Tags:
-      - Key: Name
-        Value: Public
+      - Key: "Name"
+        Value: "Public"
   NetworkAclPrivate:
     Type: 'AWS::EC2::NetworkAcl'
     Properties:
       VpcId: !Ref ProjectVPC
       Tags:
-      - Key: Name
-        Value: Private
+      - Key: "Name"
+        Value: "Private"
 
   ## NACL Association to subnets
   SubnetNetworkAclAssociationAPublic:
@@ -234,7 +238,7 @@ Resources:
       RuleAction: allow
       Egress: false
       CidrBlock: '0.0.0.0/0'
-      
+
   NetworkAclEntryOutPrivateAllowVPC:
     Type: 'AWS::EC2::NetworkAclEntry'
     Properties:
@@ -291,5 +295,52 @@ Resources:
           FromPort: 3306
           ToPort: 3306
           SourceSecurityGroupId: !Ref WebSecurityGroup
+
+  DBSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: WeAreGroupG
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+  DBInstance:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      AllocatedStorage: 30
+      AllowMajorVersionUpgrade: false
+      DBInstanceClass: db.t2.micro
+      DBName: ecloudformation
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      Engine: mysql
+      EngineVersion: 8.0.27
+      MasterUsername: admin
+      MasterUserPassword: GroupGGG
+      MultiAZ: false
+      PubliclyAccessible: false
+      StorageType: gp2
+      VPCSecurityGroups: 
+        - !Ref MySQLSecurityGroup
+  EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: 'ami-086dee346cc0be9cf'
+      InstanceType: 't2.micro'
+      KeyName: !Ref KeyName
+      # NetworkInterfaces:
+      #   - AssociatePublicIpAddress: true 
+      SecurityGroupIds:
+        - !Ref WebSecurityGroup
+      SubnetId: !Ref PublicSubnet1
+      UserData: 
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          cd /home/ec2-user/ecloudgamelley/question_app
+          echo mysql+pymysql://admin:GroupGGG@${DBInstance.Endpoint.Address}:3306/ecloudformation > endpoint.txt
+          export SQLALCHEMY_DATABASE_URI=$(cat endpoint.txt)
+          python3 ecloudgamelly.py
+
+    DependsOn:
+      - "DBInstance"
+
 
   
