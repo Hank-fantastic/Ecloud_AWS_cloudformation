@@ -22,6 +22,11 @@ Parameters:
     AllowedPattern: '^[a-zA-Z][-a-zA-Z0-9]*$'
     Default: VPC
 
+  StackName:
+    Description: export RDS resources
+    Type: String
+    Default: RDS
+
   SSHLocation:
     Description: The IP address range that can be used to SSH to the EC2 instances
     Type: String
@@ -104,19 +109,34 @@ Resources:
       - Fn::ImportValue: !Sub ${NetworkStackName}-WebSG
       SpotPrice: 0.0045
       UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          cd /home/ec2-user
-          wget https://ecloudgamelley.s3.amazonaws.com/question_app.zip
-          unzip question_app.zip
-          cd question_app
-          yum install -y python3-devel gcc mysql-devel mysql-server libmysqlclient-dev
-          pip3 install -r requirements.txt
-          echo mysql+pymysql://admin:GroupGGG@${DBInstance.Endpoint.Address}:3306/ecloudformation > endpoint.txt
-          export SQLALCHEMY_DATABASE_URI=$(cat endpoint.txt)
-          python3 ecloudgamelly.py
-    DependsOn:
-    - "DBInstance"
+        Fn::Base64: 
+          !Sub 
+          - |
+            #!/bin/bash
+            cd /home/ec2-user
+            wget https://ecloudgamelley.s3.amazonaws.com/question_app.zip
+            unzip question_app.zip
+            cd question_app
+            yum install -y python3-devel gcc mysql-devel mysql-server libmysqlclient-dev
+            pip3 install -r requirements.txt
+            echo mysql+pymysql://${DBUsername}:${DBPassword}@${RDSEndpoint}:3306/${DBName} > endpoint.txt
+            export SQLALCHEMY_DATABASE_URI=$(cat endpoint.txt)
+            python3 ecloudgamelly.py
+          - RDSEndpoint:
+              Fn::ImportValue: 
+                !Sub ${StackName}-RDSEndpoint
+            DBUsername:
+              Fn::ImportValue: 
+                !Sub ${StackName}-DBusername
+            DBPassword:
+              Fn::ImportValue: 
+                !Sub ${StackName}-RDSDBpassword
+            DBName:
+              Fn::ImportValue: 
+                !Sub ${StackName}-DBname
+
+    # DependsOn:
+    # - "DBInstance"
   
   # Scaling Policy
   WebServerScaleUpPolicy:
@@ -177,7 +197,7 @@ Resources:
       AutoScalingGroupName: !Ref WebServerGroup
       HeartbeatTimeout: 60
       DefaultResult: ABANDON
-      LifecycleHookName: !Sub "${WebServerGroup}-LCH"
+      LifecycleHookName: !Sub ${WebServerGroup}-LCH
       LifecycleTransition: autoscaling:EC2_INSTANCE_TERMINATING
 
   #ALB
@@ -214,7 +234,9 @@ Resources:
       HealthCheckPath: /
       Port: 80
       Protocol: HTTP
-      VpcId: Fn::ImportValue: !Sub ${NetworkStackName}-VPC
+      VpcId: 
+        Fn::ImportValue: 
+          !Sub ${NetworkStackName}-VPC
 
 
 ######################
