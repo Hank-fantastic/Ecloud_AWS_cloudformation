@@ -3,6 +3,17 @@ Description: >-
   Network Template: template that include RDS contents with standard design.
 
 Parameters:
+
+  NetworkStackName:
+    Description: >-
+      Name of an active CloudFormation stack that contains the networking
+      resources, such as the VPC and subnet that will be used in this stack.
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: '^[a-zA-Z][-a-zA-Z0-9]*$'
+    Default: VPC
+
   RDSInstanceType:
     Type: String
     Description: Select RDS Instance Type
@@ -92,7 +103,7 @@ Outputs:
     Description: 'The password for the database.'
     Value: !Ref RDSMasterPassword
     Export:
-      Name: !Sub '${AWS::StackName}-DBpassword'
+      Name: !Sub '${AWS::StackName}-RDSDBpassword'
   
 
   
