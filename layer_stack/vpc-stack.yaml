@@ -2,17 +2,9 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Network Template: Sample template that creates a VPC with standard design.
 
-# This template creates:
-#   VPC
-#   Internet Gateway
-#   NAT Gateways in 2 AZs
-#   1 Public Route Table
-#   2 Private Route Tables
-#   2 Public Subnets
-#   2 Private Subnets
-#   NACLs
-#   Security Groups
-#   S3 Endpoint and mount into RouteTables
+######################
+# Parameters section
+######################
 
 Parameters:
   SSHLocation:
@@ -24,177 +16,154 @@ Parameters:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
 
+  VPCCidrBlock:
+    Description: The IP address range for the VPC
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.0.0/16
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  
+  AvailabilityZone1:
+    Description: The Availability Zone for your Public Subnet 1 and Private Subnet 1
+    Type: AWS::EC2::AvailabilityZone::Name
+  
+  AvailabilityZone2:
+    Description: The Availability Zone for your Public Subnet 2 and Private Subnet 2
+    Type: AWS::EC2::AvailabilityZone::Name
+
+  PublicSubnet1CidrBlock:
+    Description: The IP address range for the Public Subnet 1
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.0.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  PublicSubnet2CidrBlock:
+    Description: The IP address range for the Public Subnet 2
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.128.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  PrivateSubnet1CidrBlock:
+    Description: The IP address range for the Private Subnet 1
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.1.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  
+  PrivateSubnet2CidrBlock:
+    Description: The IP address range for the Private Subnet 2
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.129.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
 ######################
 # Resources section
 ######################
 
 Resources:
-
-  ## VPC
-
-  VPC:
+  ProjectVPC:
     Type: AWS::EC2::VPC
     Properties:
+      CidrBlock: !Ref VPCCidrBlock
       EnableDnsSupport: true
       EnableDnsHostnames: true
-      CidrBlock: 10.0.0.0/16
       Tags:
-        - 
-          Key: "Name"
-          Value: "My VPC"
-      
-  ## Internet Gateway
-
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
+        - Key: "project"
+          Value: "myProject"
   
+  IGW:
+    Type: AWS::EC2::InternetGateway
+
   VPCGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      VpcId: !Ref VPC
-      InternetGatewayId: !Ref InternetGateway
-  
+      InternetGatewayId: !Ref IGW
+      VpcId: !Ref ProjectVPC
 
-  ## Elatic IPs
-
-  IPAddress1:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-  # IPAddress2:
-  #   Type: AWS::EC2::EIP
-  #   Properties:
-  #     Domain: vpc
-
-  ## NAT Gateways
-
-  NatGateway1:
-    Type: AWS::EC2::NatGateway
-    Properties: 
-      AllocationId: !GetAtt 'IPAddress1.AllocationId'
-      SubnetId: !Ref PublicSubnet1
-      Tags: 
-        - 
-          Key: "Name"
-          Value: "NATGW-A"
-  
-  # NatGateway2:
-  #   Type: AWS::EC2::NatGateway
-  #   Properties: 
-  #     AllocationId: !GetAtt 'IPAddress2.AllocationId'
-  #     SubnetId: !Ref PublicSubnet2
-  #     Tags: 
-  #       - 
-  #         Key: "Name"
-  #         Value: "NATGW-B"
-
-  ## Public Route Table
-
+  # Public Route Table
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
-      VpcId: !Ref VPC      
+      VpcId: !Ref ProjectVPC      
       Tags:
-        - 
-          Key: "Name"
-          Value: "Public Route"
+        - Key: "Name"
+          Value: "Public route table"
 
   PublicRoute:
     Type: AWS::EC2::Route
     DependsOn: VPCGatewayAttachment
     Properties:
       RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref IGW
       DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
 
-  ## Private Route Tables
-
+  # Private Route Table
   PrivateRouteTable1:
     Type: AWS::EC2::RouteTable
     Properties:
-      VpcId: !Ref VPC      
+      VpcId: !Ref ProjectVPC     
       Tags:
-        - 
-          Key: "Name"
-          Value: "Private Route"
+        - Key: "Name"
+          Value: "Private route table"
 
-  PrivateRoute1:
-    Type: AWS::EC2::Route
-    DependsOn: NatGateway1
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable1
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway1
-  
-  # PrivateRouteTable2:
-  #   Type: AWS::EC2::RouteTable
-  #   Properties:
-  #     VpcId: !Ref VPC      
-  #     Tags:
-  #       - 
-  #         Key: "Name"
-  #         Value: "Private Route B"
-
-  # PrivateRoute2:
-  #   Type: AWS::EC2::Route
-  #   DependsOn: NatGateway2
-  #   Properties:
-  #     RouteTableId: !Ref PrivateRouteTable2
-  #     DestinationCidrBlock: 0.0.0.0/0
-  #     NatGatewayId: !Ref NatGateway2
-
-  ## Public Subnets
-  
+  # Public Subnets
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]
-      CidrBlock: 10.0.0.0/24
+      VpcId: !Ref ProjectVPC
+      AvailabilityZone: !Ref AvailabilityZone1
+      CidrBlock: !Ref PublicSubnet1CidrBlock
       MapPublicIpOnLaunch: true
       Tags:
-        - 
-          Key: "Name"
+        - Key: "Name"
           Value: "Public Subnet 1"
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 1, !GetAZs '' ]
-      CidrBlock: 10.0.128.0/24
+      VpcId: !Ref ProjectVPC
+      AvailabilityZone: !Ref AvailabilityZone2
+      CidrBlock: !Ref PublicSubnet2CidrBlock
       MapPublicIpOnLaunch: true
       Tags:
-        - 
-          Key: "Name"
+        - Key: "Name"
           Value: "Public Subnet 2"
 
-  ## Private Subnets
-  
+  # Private Subnets
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]
-      CidrBlock: 10.0.1.0/24
+      VpcId: !Ref ProjectVPC
+      AvailabilityZone: !Ref AvailabilityZone1
+      CidrBlock: !Ref PrivateSubnet1CidrBlock
       Tags:
-        - 
-          Key: "Name"
+        - Key: "Name"
           Value: "Private Subnet 1"
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 1, !GetAZs '' ]
-      CidrBlock: 10.0.129.0/24
+      VpcId: !Ref ProjectVPC
+      AvailabilityZone: !Ref AvailabilityZone2
+      CidrBlock: !Ref PrivateSubnet2CidrBlock
       Tags:
-        - 
-          Key: "Name"
+        - Key: "Name"
           Value: "Private Subnet 2"
 
-  ## Route Table Association to subnets
-
+  # Route table association to subnets
   PublicSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -218,31 +187,30 @@ Resources:
     Properties:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTable1
-
-  ## NACL
-
+  
+  # NACL
   NetworkAclPublic:
     Type: 'AWS::EC2::NetworkAcl'
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref ProjectVPC
       Tags:
-      - Key: Name
-        Value: Public
+      - Key: "Name"
+        Value: "Public"
   NetworkAclPrivate:
     Type: 'AWS::EC2::NetworkAcl'
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref ProjectVPC
       Tags:
-      - Key: Name
-        Value: Private
+      - Key: "Name"
+        Value: "Private"
 
-  ## NACL Association to subnets
-
+   ## NACL Association to subnets
   SubnetNetworkAclAssociationAPublic:
     Type: 'AWS::EC2::SubnetNetworkAclAssociation'
     Properties:
       SubnetId: !Ref PublicSubnet1
       NetworkAclId: !Ref NetworkAclPublic
+
   SubnetNetworkAclAssociationBPublic:
     Type: 'AWS::EC2::SubnetNetworkAclAssociation'
     Properties:
@@ -254,14 +222,14 @@ Resources:
     Properties:
       SubnetId: !Ref PrivateSubnet1
       NetworkAclId: !Ref NetworkAclPrivate
+
   SubnetNetworkAclAssociationBPrivate:
     Type: 'AWS::EC2::SubnetNetworkAclAssociation'
     Properties:
       SubnetId: !Ref PrivateSubnet2
       NetworkAclId: !Ref NetworkAclPrivate
-  
-  ## NACL Rules
 
+  # NACL Rules
   NetworkAclEntryInPublicAllowAll:
     Type: 'AWS::EC2::NetworkAclEntry'
     Properties:
@@ -271,6 +239,7 @@ Resources:
       RuleAction: allow
       Egress: false
       CidrBlock: '0.0.0.0/0'
+
   NetworkAclEntryOutPublicAllowAll:
     Type: 'AWS::EC2::NetworkAclEntry'
     Properties:
@@ -280,6 +249,7 @@ Resources:
       RuleAction: allow
       Egress: true
       CidrBlock: '0.0.0.0/0'
+
   NetworkAclEntryInPrivateAllowVPC:
     Type: 'AWS::EC2::NetworkAclEntry'
     Properties:
@@ -289,6 +259,7 @@ Resources:
       RuleAction: allow
       Egress: false
       CidrBlock: '0.0.0.0/0'
+
   NetworkAclEntryOutPrivateAllowVPC:
     Type: 'AWS::EC2::NetworkAclEntry'
     Properties:
@@ -297,16 +268,15 @@ Resources:
       Protocol: -1
       RuleAction: allow
       Egress: true
-      CidrBlock: '0.0.0.0/0'   
+      CidrBlock: '0.0.0.0/0'
 
-  # ## Security Group for EC2
-
+  # Security Group for EC2
   WebSecurityGroup:  
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: "Web SG"
       GroupDescription: "Security group with allow ELB"
-      VpcId: !Ref VPC
+      VpcId: !Ref ProjectVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -316,15 +286,14 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: !Ref SSHLocation
-
-  ## Security Group for ALB
-
-  ALBSecurityGroup:  
+  
+  # Security Group for ALB
+  ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: "ALB SG"
       GroupDescription: "Security group with allow HTTP(s)"
-      VpcId: !Ref VPC
+      VpcId: !Ref ProjectVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -333,88 +302,43 @@ Resources:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          CidrIp: 0.0.0.0/0    
+          CidrIp: 0.0.0.0/0
 
-  ## Security Group for DB
-
-  MySQLSecurityGroup:  
+  # Security Group for DB
+  DBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: "MySQL SG"
       GroupDescription: "Security group with allow EC2"
-      VpcId: !Ref VPC
+      VpcId: !Ref ProjectVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 3306
           ToPort: 3306
           SourceSecurityGroupId: !Ref WebSecurityGroup
- 
-  ## Endpoint
-  
-  # S3Endpoint:
-  #   Type: AWS::EC2::VPCEndpoint
-  #   Properties:
-  #     VpcId: !Ref VPC
-  #     ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
-  #     VpcEndpointType: "Gateway"
-  #     PolicyDocument:
-  #       Version: 2012-10-17
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal: "*"
-  #           Action:
-  #             - "s3:*"
-  #           Resource:
-  #             - "*"
-  #     RouteTableIds:
-  #       - !Ref PublicRouteTable
-  #       - !Ref PrivateRouteTable1
-  #       - !Ref PrivateRouteTable2
-
-  # DDBEndpoint:
-  #   Type: AWS::EC2::VPCEndpoint
-  #   Properties:
-  #     VpcId: !Ref VPC
-  #     ServiceName: !Sub "com.amazonaws.${AWS::Region}.dynamodb"
-  #     VpcEndpointType: "Gateway"
-  #     PolicyDocument:
-  #       Version: 2012-10-17
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal: "*"
-  #           Action:
-  #             - "dynamodb:*"
-  #           Resource:
-  #             - "*"
-  #     RouteTableIds:
-  #       - !Ref PublicRouteTable
-  #       - !Ref PrivateRouteTable1
-  #       - !Ref PrivateRouteTable2      
-
 
 ######################
 # Outputs section
 ######################
 
 Outputs:
-  
   VPC:
     Description: VPC ID
-    Value: !Ref VPC
+    Value: !Ref ProjectVPC
     Export:
       Name: !Sub '${AWS::StackName}-VPC'
-  
-  # S3Endpoint:
-  #   Description: S3 Endpoint Gateway ID
-  #   Value: !Ref S3Endpoint
-  #   Export:
-  #     Name: !Sub '${AWS::StackName}-S3EndpointGW'
 
-  # DDBEndpoint:
-  #   Description: DynamoDB Endpoint Gateway ID
-  #   Value: !Ref DDBEndpoint
-  #   Export:
-  #     Name: !Sub '${AWS::StackName}-DDBEndpointGW'
+  AvailabilityZone1:
+    Description: Availability Zone 1 ID
+    Value: !Ref AvailabilityZone1
+    Export:
+      Name: !Sub '${AWS::StackName}-AZ1'
+
+  AvailabilityZone2:
+    Description: Availability Zone 2 ID
+    Value: !Ref AvailabilityZone2
+    Export:
+      Name: !Sub '${AWS::StackName}-AZ2'
 
   PublicSubnet1:
     Description: The subnet ID to use for public subnet
@@ -439,7 +363,7 @@ Outputs:
     Value: !Ref PrivateSubnet2
     Export:
       Name: !Sub '${AWS::StackName}-PrivateSubnet2'
-  
+
   WebSG:
     Description: The subnet ID to use for private subnet
     Value: !Ref WebSecurityGroup
@@ -454,22 +378,7 @@ Outputs:
 
   DBSG:
     Description: The subnet ID to use for private subnet
-    Value: !Ref MySQLSecurityGroup
+    Value: !Ref DBSecurityGroup
     Export:
       Name: !Sub '${AWS::StackName}-DBSG'
-
-# AWS::EC2::VPC
-# AWS::EC2::InternetGateway
-# AWS::EC2::VPCGatewayAttachment
-# AWS::EC2::EIP
-# AWS::EC2::NatGateway
-# AWS::EC2::RouteTable
-# AWS::EC2::Route
-# AWS::EC2::RouteTable
-# AWS::EC2::Route
-# AWS::EC2::Subnet(public*2&private*2)
-# AWS::EC2::SubnetRouteTableAssociation(public*2&private*2)
-# AWS::EC2::NetworkAcl(public&private)
-# AWS::EC2::SubnetNetworkAclAssociation(public*2&private*2)
-# AWS::EC2::NetworkAclEntry(inbound & outbound rules)
-# AWS::EC2::SecurityGroup
+  
