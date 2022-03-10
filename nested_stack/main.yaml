@@ -194,8 +194,8 @@ Resources:
         RDSEndpoint: !GetAtt RDS.Outputs.RDSEndpoint
         KeyName: !Ref KeyName
         InstanceType: !Ref InstanceType
-        LastestAmiId: !Ref LatestAmiId
+        LatestAmiId: !Ref LatestAmiId
         AutoScalingGroupMinSize: !Ref AutoScalingGroupMinSize
-        AtuoScalingGroupDesiredSize: !Ref AutoScalingGroupDesiredSize
+        AutoScalingGroupDesiredSize: !Ref AutoScalingGroupDesiredSize
         AutoScalingGroupMaxSize: !Ref AutoScalingGroupMaxSize
 
