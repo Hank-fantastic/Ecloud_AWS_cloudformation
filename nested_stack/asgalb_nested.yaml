@@ -1,0 +1,273 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  ASG Template: ALB and Auto Scaling Group
+
+# This template creates:
+#   ALB
+#   Auto Scaling Group
+#   LaunchConfiguration
+#   Scaling Policy
+#   CloudWatch Alarm
+#   LifecycleHook
+
+Parameters:
+
+  VPCId:
+    Description: The VPC ID
+    Type: AWS::EC2::VPC::Id
+
+  AvailabilityZone1:
+    Description: The Availability Zone for your Public Subnet 1 and Private Subnet 1
+    Type: AWS::EC2::AvailabilityZone::Name
+  
+  AvailabilityZone2:
+    Description: The Availability Zone for your Public Subnet 2 and Private Subnet 2
+    Type: AWS::EC2::AvailabilityZone::Name
+
+  PublicSubnet1:
+    Description: The Subnet ID
+    Type: AWS::EC2::Subnet::Id
+
+  PublicSubnet2:
+    Description: The Subnet ID
+    Type: AWS::EC2::Subnet::Id
+  
+  WebSecurityGroup:  
+    Description: Web Security Group
+    Type: AWS::EC2::SecurityGroup::Id
+
+  ALBSecurityGroup:
+    Description: ALB Security Group
+    Type: AWS::EC2::SecurityGroup::Id
+
+  DBName:
+    Type: String
+    Description: Your DB name
+
+  DBUserName:
+    Type: String
+    Description: Your DB username
+
+  DBPassword:
+    Type: String
+    Description: Your DB password
+
+  RDSEndpoint:
+    Description: 'The connection endpoint for the database.'
+    Type: String
+
+  SSHLocation:
+    Description: The IP address range that can be used to SSH to the EC2 instances
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    Default: 0.0.0.0/0
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  KeyName:
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+
+  InstanceType:
+    Type: String
+    Description: Select Instance Type
+    AllowedValues: [t2.micro, t2.small, t2.medium, t2.large,
+      t3.micro, t3.small, t3.medium, t3.large,]
+
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+    Description: Choose your AMI ID
+
+  AutoScalingGroupMinSize: 
+    Type: Number
+    Description: Minimum size of Group ASG.
+    Default: 1
+
+  AutoScalingGroupDesiredSize: 
+    Type: Number
+    Description: Desired size of Group ASG.
+    Default: 1
+    
+  AutoScalingGroupMaxSize: 
+    Type: Number
+    Description: Maximum size of Group ASG.
+    Default: 2
+
+######################
+# Resources section
+######################
+
+Resources:
+
+  # Auto Scaling Group
+  WebServerGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn: ALBListener
+    Properties:
+      AutoScalingGroupName: WebServerGroup
+      AvailabilityZones:
+      - !Ref AvailabilityZone1
+      - !Ref AvailabilityZone2
+      VPCZoneIdentifier:
+      - !Ref PublicSubnet1
+      - !Ref PublicSubnet2
+      LaunchConfigurationName: !Ref LaunchConfig
+      DesiredCapacity: !Ref AutoScalingGroupDesiredSize
+      MinSize: !Ref AutoScalingGroupMinSize
+      MaxSize: !Ref AutoScalingGroupMaxSize
+      TargetGroupARNs: 
+      - Ref: ALBTargetGroup
+      Tags:
+      - Key: Name
+        Value: 'vpc-stack-ASG'
+        PropagateAtLaunch: 'true'
+  
+  LaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      AssociatePublicIpAddress: true
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SecurityGroups:
+      - !Ref WebSecurityGroup
+      SpotPrice: 0.0045
+      UserData:
+        Fn::Base64: 
+          !Sub 
+          - |
+            #!/bin/bash
+            cd /home/ec2-user
+            wget https://ecloudgamelley.s3.amazonaws.com/question_app.zip
+            unzip question_app.zip
+            cd question_app
+            yum install -y python3-devel gcc mysql-devel mysql-server libmysqlclient-dev
+            pip3 install -r requirements.txt
+            echo mysql+pymysql://${DBUsername}:${DBPassword}@${RDSEndpoint}:3306/${DBName} > endpoint.txt
+            export SQLALCHEMY_DATABASE_URI=$(cat endpoint.txt)
+            python3 ecloudgamelly.py
+          - RDSEndpoint:
+              !Ref RDSEndpoint
+            DBUsername:
+              !Ref DBUserName
+            DBPassword:
+              !Ref DBPassword
+            DBName:
+              !Ref DBName
+
+    # DependsOn:
+    # - "DBInstance"
+  
+  # Scaling Policy
+  WebServerScaleUpPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref 'WebServerGroup'
+      Cooldown: '60'
+      ScalingAdjustment: 2
+
+  WebServerScaleDownPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref 'WebServerGroup'
+      Cooldown: '60'
+      ScalingAdjustment: -1
+  
+  # CloudWatch Alarm
+
+  CPUAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Scale-up if CPU > 75% for 5 minutes
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 75
+      AlarmActions: [!Ref 'WebServerScaleUpPolicy']
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value: !Ref 'WebServerGroup'
+      ComparisonOperator: GreaterThanThreshold
+
+  CPUAlarmLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Scale-down if CPU < 40% for 10 minutes
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 40
+      AlarmActions: [!Ref 'WebServerScaleDownPolicy']
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value: !Ref 'WebServerGroup'
+      ComparisonOperator: LessThanThreshold
+
+  # Life Cycle hook
+
+  LCH:
+    Type: AWS::AutoScaling::LifecycleHook
+    Properties:
+      AutoScalingGroupName: !Ref WebServerGroup
+      HeartbeatTimeout: 60
+      DefaultResult: ABANDON
+      LifecycleHookName: !Sub ${WebServerGroup}-LCH
+      LifecycleTransition: autoscaling:EC2_INSTANCE_TERMINATING
+
+  #ALB
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets: 
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref ALBTargetGroup
+      LoadBalancerArn:
+        Ref: ApplicationLoadBalancer
+      Port: '80'
+      Protocol: HTTP
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 15
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref VPCId
+
+
+######################
+# Outputs section
+######################
+
+Outputs:
+
+  ALBDNSName:
+    Description: ALB's DNS Name
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    # Export: 
+    #   Name: !Sub '${AWS::StackName}-ALB-DNS-Name'
