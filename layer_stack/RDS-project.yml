@@ -59,8 +59,7 @@ Resources:
       DBSubnetGroupDescription: WeAreGroupG
       SubnetIds:
       #need to !sub
-        - Fn::ImportValue: !Sub ${NetworkStackName}-PrivateSubnet1
-        - Fn::ImportValue: !Sub ${NetworkStackName}-PrivateSubnet2
+        - !Ref NetworkStackName
   DBInstance:
     Type: 'AWS::RDS::DBInstance'
     Properties:
@@ -78,32 +77,24 @@ Resources:
       StorageType: gp2
       VPCSecurityGroups: 
       #need to !sub
-      - Fn::ImportValue: !Sub ${NetworkStackName}-DBSG
+      - !Ref NetworkStackName
 
 Outputs:
   RDSEndpoint:
     Description: 'The connection endpoint for the database.'
     Value: !GetAtt 'DBInstance.Endpoint.Address'
-    Export:
-      Name: !Sub '${AWS::StackName}-RDSEndpoint'
 
   DBname: 
     Description: 'The name for the database.'
     Value: !Ref RDSDBName
-    Export:
-      Name: !Sub '${AWS::StackName}-DBname'
 
   DBusername: 
     Description: 'The username for the database.'
     Value: !Ref RDSMasterUserName
-    Export:
-      Name: !Sub '${AWS::StackName}-DBusername'
 
   DBpassword: 
     Description: 'The password for the database.'
     Value: !Ref RDSMasterPassword
-    Export:
-      Name: !Sub '${AWS::StackName}-RDSDBpassword'
   
 
   
