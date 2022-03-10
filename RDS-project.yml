@@ -80,19 +80,19 @@ Outputs:
     Description: 'The name for the database.'
     Value: !Ref RDSDBName
     Export:
-      Name: !Sub '${AWS::StackName}-RDSDBname'
+      Name: !Sub '${AWS::StackName}-DBname'
 
   DBusername: 
     Description: 'The username for the database.'
     Value: !Ref RDSMasterUserName
     Export:
-      Name: !Sub '${AWS::StackName}-RDSDBusername'
+      Name: !Sub '${AWS::StackName}-DBusername'
 
   DBpassword: 
     Description: 'The password for the database.'
     Value: !Ref RDSMasterPassword
     Export:
-      Name: !Sub '${AWS::StackName}-RDSDBpassword'
+      Name: !Sub '${AWS::StackName}-DBpassword'
   
 
   
