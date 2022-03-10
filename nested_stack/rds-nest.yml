@@ -43,7 +43,6 @@ Parameters:
     Type: String
     Description: Your DB username
     Default: 'admin'
-    
   RDSMasterPassword:
     Type: String
     Description: Your DB password
