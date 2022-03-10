@@ -5,17 +5,17 @@ Description: >-
 Parameters:
 
   PrivateSubnet1:
-    Type: AWS::EC2::Subnet
+    Type: AWS::EC2::Subnet::Id
     MinLength: 1
     MaxLength: 255
 
   PrivateSubnet2:
-    Type: AWS::EC2::Subnet
+    Type: AWS::EC2::Subnet::Id
     MinLength: 1
     MaxLength: 255
 
   DBnetworkSG:
-    Type: AWS::EC2::SecurityGroups
+    Type: AWS::EC2::SecurityGroup::Id
     Description: "Security group with allow EC2"
     
   RDSInstanceType:
