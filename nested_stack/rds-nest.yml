@@ -4,18 +4,19 @@ Description: >-
 
 Parameters:
 
-  PrivateSubnet1NACL:
-    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
     MinLength: 1
     MaxLength: 255
 
-  PrivateSubnet2NACL:
-    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
     MinLength: 1
     MaxLength: 255
 
   DBnetworkSG:
-    Type: 'AWS::EC2::SecurityGroup'
+    Type: AWS::EC2::SecurityGroups
+    Description: "Security group with allow EC2"
     
   RDSInstanceType:
     Type: String
@@ -62,8 +63,8 @@ Resources:
       DBSubnetGroupDescription: WeAreGroupG
       SubnetIds:
       #need to !sub
-        - !Ref PrivateSubnet1NACL
-        - !Ref PrivateSubnet2NACL 
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2 
   DBInstance:
     Type: 'AWS::RDS::DBInstance'
     Properties:
