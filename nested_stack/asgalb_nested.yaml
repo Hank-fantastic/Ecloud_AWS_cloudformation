@@ -68,8 +68,7 @@ Parameters:
       t3.micro, t3.small, t3.medium, t3.large,]
 
   LatestAmiId:
-    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+    Type: String
     Description: Choose your AMI ID
 
   AutoScalingGroupMinSize: 
@@ -96,7 +95,6 @@ Resources:
   # Auto Scaling Group
   WebServerGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
-    DependsOn: ALBListener
     Properties:
       AutoScalingGroupName: WebServerGroup
       AvailabilityZones:
@@ -115,6 +113,10 @@ Resources:
       - Key: Name
         Value: 'vpc-stack-ASG'
         PropagateAtLaunch: 'true'
+    CreationPolicy:
+      ResourceSignal:
+        Count: '1'
+        Timeout: PT07M
   
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
@@ -139,7 +141,8 @@ Resources:
             pip3 install -r requirements.txt
             echo mysql+pymysql://${DBUsername}:${DBPassword}@${RDSEndpoint}:3306/${DBName} > endpoint.txt
             export SQLALCHEMY_DATABASE_URI=$(cat endpoint.txt)
-            python3 ecloudgamelly.py
+            nohup python3 ecloudgamelly.py > Output.out 2> Error.err < /dev/null &
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WebServerGroup --region ${AWS::Region}
           - RDSEndpoint:
               !Ref RDSEndpoint
             DBUsername:
@@ -148,6 +151,7 @@ Resources:
               !Ref DBPassword
             DBName:
               !Ref DBName
+            
 
     # DependsOn:
     # - "DBInstance"
@@ -217,6 +221,8 @@ Resources:
   #ALB
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn:
+      - "WebServerGroup"
     Properties:
       Scheme: internet-facing
       Subnets: 
