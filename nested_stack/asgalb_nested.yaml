@@ -256,6 +256,17 @@ Resources:
       Protocol: HTTP
       VpcId: !Ref VPCId
 
+  Route53RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt ApplicationLoadBalancer.DNSName
+        HostedZoneId: !GetAtt ApplicationLoadBalancer.CanonicalHostedZoneID
+        EvaluateTargetHealth: true
+      HostedZoneId: 'Z04547642H0TAOGC579NI'
+      Name: 'www.ecloudgamelley.com'
+      Type: 'A'
+
 
 ######################
 # Outputs section
@@ -268,3 +279,7 @@ Outputs:
     Value: !GetAtt ApplicationLoadBalancer.DNSName
     # Export: 
     #   Name: !Sub '${AWS::StackName}-ALB-DNS-Name'
+
+  RecordSetDomainName:
+    Description: RecordSet's Domain Name
+    Value: !Ref Route53RecordSet
