@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  Network Template: Sample template that creates a VPC with standard design.
+  Network Template: Sample template that creates a CICD with standard design.
 
 Parameters:
   SSHLocation:
@@ -375,7 +375,7 @@ Resources:
           - Ec2TagGroup:
             - Type: KEY_AND_VALUE
               Key: "Name"
-              Value: !Ref Testec2
+              Value: Testec2
       ServiceRoleArn: arn:aws:iam::959074604313:role/CodeDeployServiceRole
 
   Testcodepipeline:
@@ -384,8 +384,9 @@ Resources:
       Name: GroupG
       ArtifactStore:
         Type: S3
-        Location: ecloudgamelley
+        Location: cf-templates-e0w5gxt39rzj-us-west-2
       RoleArn: arn:aws:iam::959074604313:role/service-role/AWSCodePipelineServiceRole-us-west-2-test-pipeline
+      RestartExecutionOnUpdate: true
       Stages:
         - Name: Source
           Actions:
@@ -393,22 +394,26 @@ Resources:
               ActionTypeId:
                 Category: Source
                 Owner: ThirdParty
-                Version: 1
                 Provider: GitHub
-              Configurations:
+                Version: 1
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
                 Owner: Hank-fantastic
-                Repo: ecloudgamelley
+                Repo: Ecloud_AWS_cloudformation
                 Branch: master
-                oAuthToken: '{{resolve:secretsmanager:GithubOAuthToken:ecloudgamelley:WEBHOOK}}'
+                OAuthToken: '{{resolve:secretsmanager:GITHUB_ACCESS:SecretString:GITHUB_ACCESS_TOKEN}}'
         - Name: Deploy
           Actions:
             - Name: Deploy
               ActionTypeId:
                 Category: Deploy
                 Owner: AWS
-                Version: 1
                 Provider: CodeDeploy
-              Configurations:
+                Version: 1
+              InputArtifacts:
+                - Name: SourceOutput
+              Configuration:
                 ApplicationName: !Ref Testcodedeploy
                 DeploymentGroupName: !Ref Testdeploymentgroup
 
@@ -418,12 +423,12 @@ Resources:
     Properties:
       Authentication: GITHUB_HMAC
       AuthenticationConfiguration: 
-        SecretToken: '{{resolve:secretsmanager:GithubOAuthToken:ecloudgamelley:WEBHOOK}}'
+        SecretToken: '{{resolve:secretsmanager:GITHUB_ACCESS:SecretString:GITHUB_ACCESS_TOKEN}}'
       Filters:
         - JsonPath: $.ref
-          MatchEquals: 'refs/heads/'
+          MatchEquals: 'refs/heads/master'
       TargetPipeline: !Ref Testcodepipeline
       TargetAction: Source
       TargetPipelineVersion: !GetAtt Testcodepipeline.Version
-      RegisterWithThirdParty: 'true'
+      RegisterWithThirdParty: true
         
