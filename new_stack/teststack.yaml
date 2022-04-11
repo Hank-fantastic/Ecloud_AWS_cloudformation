@@ -378,17 +378,52 @@ Resources:
               Value: !Ref Testec2
       ServiceRoleArn: arn:aws:iam::959074604313:role/CodeDeployServiceRole
 
-#  Testcodepipeline:
-#    Type: AWS::CodePipeline::Pipeline
-#    Properties:
-#      Name: GroupG
-#      RoleArn: arn:aws:iam::959074604313:role/service-role/AWSCodePipelineServiceRole-us-west-2-test-pipeline
-##      Stages:?
-#
-#  Testhook:
-#    Type: AWS::CodePipeline::Webhook
-#    Properties:
-#      Authentication: GITHUB_HMAC
-##     AuthenticationConfiguration:?
-#      RegisterWithThirdParty: 'true'
+  Testcodepipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: GroupG
+      ArtifactStore:
+        Type: S3
+        Location: ecloudgamelley
+      RoleArn: arn:aws:iam::959074604313:role/service-role/AWSCodePipelineServiceRole-us-west-2-test-pipeline
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: 1
+                Provider: GitHub
+              Configurations:
+                Owner: Hank-fantastic
+                Repo: ecloudgamelley
+                Branch: master
+                oAuthToken: '{{resolve:secretsmanager:GithubOAuthToken:ecloudgamelley:WEBHOOK}}'
+        - Name: Deploy
+          Actions:
+            - Name: Deploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CodeDeploy
+              Configurations:
+                ApplicationName: !Ref Testcodedeploy
+                DeploymentGroupName: !Ref Testdeploymentgroup
+
+
+  Testhook:
+    Type: AWS::CodePipeline::Webhook
+    Properties:
+      Authentication: GITHUB_HMAC
+      AuthenticationConfiguration: 
+        SecretToken: '{{resolve:secretsmanager:GithubOAuthToken:ecloudgamelley:WEBHOOK}}'
+      Filters:
+        - JsonPath: $.ref
+          MatchEquals: 'refs/heads/'
+      TargetPipeline: !Ref Testcodepipeline
+      TargetAction: Source
+      TargetPipelineVersion: !GetAtt Testcodepipeline.Version
+      RegisterWithThirdParty: 'true'
         
