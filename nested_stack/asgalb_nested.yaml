@@ -263,7 +263,8 @@ Resources:
         DNSName: !GetAtt ApplicationLoadBalancer.DNSName
         HostedZoneId: !GetAtt ApplicationLoadBalancer.CanonicalHostedZoneID
         EvaluateTargetHealth: true
-      HostedZoneId: 'Z02274461NXGXCZEFU0VE'
+      # depends on your hosted zone 
+      HostedZoneId: 'Z0681649J86O5EZMSKRH'
       Name: 'www.ecloudgamelley.com'
       Type: 'A'
 
