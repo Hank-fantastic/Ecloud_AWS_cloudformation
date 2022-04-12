@@ -81,6 +81,12 @@ Parameters:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
     Type: AWS::EC2::KeyPair::KeyName
 
+  EC2tagName:
+    Type: String
+    Description: input EC2 tagname
+    Default: Testec2
+
+
 ######################
 # Resources section
 ######################
@@ -293,27 +299,10 @@ Resources:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          SourceSecurityGroupId: !Ref ALBSecurityGroup
+          CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: !Ref SSHLocation
-
-  # Security Group for ALB
-  ALBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: "ALB SG"
-      GroupDescription: "Security group with allow HTTP(s)"
-      VpcId: !Ref ProjectVPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
           CidrIp: 0.0.0.0/0
 
   # Security Group for DB
@@ -327,7 +316,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 3306
           ToPort: 3306
-          SourceSecurityGroupId: !Ref WebSecurityGroup
+          CidrIp: 0.0.0.0/0
   # test place
   Testec2:
     Type: AWS::EC2::Instance
@@ -335,13 +324,14 @@ Resources:
       AvailabilityZone: !Ref AvailabilityZone1
       ImageId: !Ref LatestAmiId
       InstanceType: !Ref InstanceType
+      IamInstanceProfile: codedeploy_ec2_iam
       KeyName: !Ref KeyName
       SecurityGroupIds: 
         - !Ref WebSecurityGroup
       SubnetId: !Ref PublicSubnet1
       Tags:
         - Key: Name
-          Value: Testec2
+          Value: !Ref EC2tagName
       UserData:
         Fn::Base64: 
           !Sub |
@@ -349,11 +339,11 @@ Resources:
             cd /home/ec2-user
             sudo yum install ruby -y
             sudo yum install wget -y
-            wget https://aws-codedeploy-us-east-1.s3.us-east-1.amazonaws.com/latest/install
+            wget https://aws-codedeploy-us-west-2.s3.us-west-2.amazonaws.com/latest/install
             sudo chmod +x ./install
             sudo ./install auto
             sudo service codedeploy-agent start
-            sudo service codedeploy-agent status 
+            sudo service codedeploy-agent status  
 
   Testcodedeploy:
     Type: AWS::CodeDeploy::Application
@@ -375,8 +365,9 @@ Resources:
           - Ec2TagGroup:
             - Type: KEY_AND_VALUE
               Key: "Name"
-              Value: Testec2
+              Value: !Ref EC2tagName
       ServiceRoleArn: arn:aws:iam::959074604313:role/CodeDeployServiceRole
+    DependsOn: Testec2
 
   Testcodepipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -384,8 +375,8 @@ Resources:
       Name: GroupG
       ArtifactStore:
         Type: S3
-        Location: cf-templates-e0w5gxt39rzj-us-west-2
-      RoleArn: arn:aws:iam::959074604313:role/service-role/AWSCodePipelineServiceRole-us-west-2-test-pipeline
+        Location: codepipeline-us-west-2-488065597837
+      RoleArn: arn:aws:iam::959074604313:role/service-role/AWSCodePipelineServiceRole-us-west-2-ecloudgamelley-pipeline
       RestartExecutionOnUpdate: true
       Stages:
         - Name: Source
@@ -400,7 +391,7 @@ Resources:
                 - Name: SourceOutput
               Configuration:
                 Owner: Hank-fantastic
-                Repo: Ecloud_AWS_cloudformation
+                Repo: ecloudgamelley
                 Branch: master
                 OAuthToken: '{{resolve:secretsmanager:GITHUB_ACCESS:SecretString:GITHUB_ACCESS_TOKEN}}'
         - Name: Deploy
