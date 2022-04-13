@@ -78,7 +78,7 @@ Resources:
       MasterUsername: !Ref RDSMasterUserName
       MasterUserPassword: !Ref RDSMasterPassword
       MultiAZ: false
-      PubliclyAccessible: false
+      PubliclyAccessible: true
       StorageType: gp2
       VPCSecurityGroups: 
       #need to !sub
