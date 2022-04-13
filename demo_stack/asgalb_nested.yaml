@@ -124,6 +124,7 @@ Resources:
       AssociatePublicIpAddress: true
       ImageId: !Ref LatestAmiId
       InstanceType: !Ref InstanceType
+      IamInstanceProfile: 'arn:aws:iam::959074604313:instance-profile/LaunchConfigRole'
       KeyName: !Ref KeyName
       SecurityGroups:
       - !Ref WebSecurityGroup
@@ -135,8 +136,15 @@ Resources:
             #!/bin/bash
             yum update -y
             yum install git -y
+            aws s3 cp s3://ecloudgamelley/id_rsa ~/.ssh/id_rsa
+            aws s3 cp s3://ecloudgamelley/id_rsa.pub ~/.ssh/id_rsa.pub
+            chmod 700 -R ~/.ssh/
+            eval `ssh-agent -s`
+            ssh-add ~/.ssh/id_rsa
+            ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+            ssh-keygen -Hf ~/.ssh/known_hosts
             cd /home/ec2-user
-            git clone https://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@github.com/repc18/ecloudgamelley.git
+            git clone git@github.com:repc18/ecloudgamelley.git
             cd ecloudgamelley
             yum install -y python3-devel gcc mysql-devel mysql-server libmysqlclient-dev
             pip3 install -r requirements.txt
