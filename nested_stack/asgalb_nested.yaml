@@ -133,10 +133,11 @@ Resources:
           !Sub 
           - |
             #!/bin/bash
+            yum update -y
+            yum install git -y
             cd /home/ec2-user
-            wget https://ecloudgamelley.s3.amazonaws.com/question_app.zip
-            unzip question_app.zip
-            cd question_app
+            git clone https://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@github.com/repc18/ecloudgamelley.git
+            cd ecloudgamelley
             yum install -y python3-devel gcc mysql-devel mysql-server libmysqlclient-dev
             pip3 install -r requirements.txt
             echo mysql+pymysql://${DBUsername}:${DBPassword}@${RDSEndpoint}:3306/${DBName} > endpoint.txt
@@ -267,6 +268,7 @@ Resources:
       HostedZoneId: 'Z0681649J86O5EZMSKRH'
       Name: 'www.ecloudgamelley.com'
       Type: 'A'
+      Failover: 'PRIMARY'
 
 
 ######################

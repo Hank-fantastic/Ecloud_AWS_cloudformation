@@ -1,0 +1,105 @@
+# AWSTemplateFormatVersion: 2010-09-09
+# Description: >-
+#   Network Template: template that include RDS contents with standard design.
+
+# Parameters:
+
+#   PrivateSubnet1:
+#     Type: AWS::EC2::Subnet::Id
+#     MinLength: 1
+#     MaxLength: 255
+
+#   PrivateSubnet2:
+#     Type: AWS::EC2::Subnet::Id
+#     MinLength: 1
+#     MaxLength: 255
+
+#   DBnetworkSG:
+#     Type: AWS::EC2::SecurityGroup::Id
+#     Description: "Security group with allow EC2"
+    
+#   RDSInstanceType:
+#     Type: String
+#     Description: Select RDS Instance Type
+#     AllowedValues: [db.t2.micro, db.t2.small, db.t2.medium, db.t2.large,
+#       db.t3.micro, db.t3.small, db.t3.medium, db.t3.large,]
+#     Default: db.t2.micro
+
+#   DBAllocatedStorage:
+#     Description: 'The allocated storage size, specified in GB (ignored when DBSnapshotIdentifier is set, value used from snapshot).'
+#     Type: Number
+#     Default: 20
+#     MinValue: 5
+#     MaxValue: 30
+  
+#   EngineVersion:
+#     Description: 'MySQL version.'
+#     Type: String
+#     Default: '5.7.21'
+#     AllowedValues: ['8.0.15', '5.7.25', '5.7.21', '5.6.41', '5.5.61']
+
+#   # RDSDBName:
+#   #   Type: String
+#   #   Description: Your DB name
+#   #   Default: 'ecloudformation'
+
+#   # RDSMasterUserName:
+#   #   Type: String
+#   #   Description: Your DB username
+#   #   Default: 'admin'
+#   # RDSMasterPassword:
+#   #   Type: String
+#   #   Description: Your DB password
+#   #   NoEcho: true
+#   #   Default: ''
+  
+
+
+
+# Resources:
+#   DBSubnetGroup:
+#     Type: 'AWS::RDS::DBSubnetGroup'
+#     Properties:
+#       DBSubnetGroupDescription: WeAreGroupG
+#       SubnetIds:
+#       #need to !sub
+#         - !Ref PrivateSubnet1
+#         - !Ref PrivateSubnet2 
+#   DBInstance:
+#     Type: 'AWS::RDS::DBInstance'
+#     Properties:
+#       AllocatedStorage: !Ref DBAllocatedStorage
+#       AllowMajorVersionUpgrade: false
+#       DBInstanceClass: !Ref RDSInstanceType
+#       DBName: !Ref RDSDBName
+#       DBSubnetGroupName: !Ref DBSubnetGroup
+#       Engine: mysql
+#       EngineVersion: !Ref EngineVersion
+#       MasterUsername: !Ref RDSMasterUserName
+#       MasterUserPassword: !Ref RDSMasterPassword
+#       MultiAZ: false
+#       PubliclyAccessible: false
+#       StorageType: gp2
+#       VPCSecurityGroups: 
+#       #need to !sub
+#       - !Ref DBnetworkSG
+
+# Outputs:
+#   RDSEndpoint:
+#     Description: 'The connection endpoint for the database.'
+#     Value: !GetAtt 'DBInstance.Endpoint.Address'
+
+#   DBname: 
+#     Description: 'The name for the database.'
+#     Value: !Ref RDSDBName
+
+#   DBusername: 
+#     Description: 'The username for the database.'
+#     Value: !Ref RDSMasterUserName
+
+#   DBpassword: 
+#     Description: 'The password for the database.'
+#     Value: !Ref RDSMasterPassword
+  
+
+  

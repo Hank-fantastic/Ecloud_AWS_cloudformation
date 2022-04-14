@@ -51,23 +51,23 @@ Parameters:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
 
-  PrivateSubnet1CidrBlock:
-    Description: The IP address range for the Private Subnet 1
-    Type: String
-    MinLength: 9
-    MaxLength: 18
-    Default: 10.0.1.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
-    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  # PrivateSubnet1CidrBlock:
+  #   Description: The IP address range for the Private Subnet 1
+  #   Type: String
+  #   MinLength: 9
+  #   MaxLength: 18
+  #   Default: 10.0.1.0/24
+  #   AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+  #   ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
   
-  PrivateSubnet2CidrBlock:
-    Description: The IP address range for the Private Subnet 2
-    Type: String
-    MinLength: 9
-    MaxLength: 18
-    Default: 10.0.129.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
-    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  # PrivateSubnet2CidrBlock:
+  #   Description: The IP address range for the Private Subnet 2
+  #   Type: String
+  #   MinLength: 9
+  #   MaxLength: 18
+  #   Default: 10.0.129.0/24
+  #   AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+  #   ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
 
 ######################
 # Resources section
@@ -111,13 +111,13 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
 
   # Private Route Table
-  PrivateRouteTable1:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref ProjectVPC     
-      Tags:
-        - Key: "Name"
-          Value: "Private route table"
+  # PrivateRouteTable1:
+  #   Type: AWS::EC2::RouteTable
+  #   Properties:
+  #     VpcId: !Ref ProjectVPC     
+  #     Tags:
+  #       - Key: "Name"
+  #         Value: "Private route table"
 
   # Public Subnets
   PublicSubnet1:
@@ -142,26 +142,26 @@ Resources:
         - Key: "Name"
           Value: "Public Subnet 2"
 
-  # Private Subnets
-  PrivateSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref ProjectVPC
-      AvailabilityZone: !Ref AvailabilityZone1
-      CidrBlock: !Ref PrivateSubnet1CidrBlock
-      Tags:
-        - Key: "Name"
-          Value: "Private Subnet 1"
+  # # Private Subnets
+  # PrivateSubnet1:
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     VpcId: !Ref ProjectVPC
+  #     AvailabilityZone: !Ref AvailabilityZone1
+  #     CidrBlock: !Ref PrivateSubnet1CidrBlock
+  #     Tags:
+  #       - Key: "Name"
+  #         Value: "Private Subnet 1"
 
-  PrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref ProjectVPC
-      AvailabilityZone: !Ref AvailabilityZone2
-      CidrBlock: !Ref PrivateSubnet2CidrBlock
-      Tags:
-        - Key: "Name"
-          Value: "Private Subnet 2"
+  # PrivateSubnet2:
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     VpcId: !Ref ProjectVPC
+  #     AvailabilityZone: !Ref AvailabilityZone2
+  #     CidrBlock: !Ref PrivateSubnet2CidrBlock
+  #     Tags:
+  #       - Key: "Name"
+  #         Value: "Private Subnet 2"
 
   # Route table association to subnets
   PublicSubnet1RouteTableAssociation:
@@ -176,17 +176,17 @@ Resources:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
-  PrivateSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet1
-      RouteTableId: !Ref PrivateRouteTable1
+  # PrivateSubnet1RouteTableAssociation:
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   Properties:
+  #     SubnetId: !Ref PrivateSubnet1
+  #     RouteTableId: !Ref PrivateRouteTable1
 
-  PrivateSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet2
-      RouteTableId: !Ref PrivateRouteTable1
+  # PrivateSubnet2RouteTableAssociation:
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   Properties:
+  #     SubnetId: !Ref PrivateSubnet2
+  #     RouteTableId: !Ref PrivateRouteTable1
   
   # NACL
   NetworkAclPublic:
@@ -196,13 +196,13 @@ Resources:
       Tags:
       - Key: "Name"
         Value: "Public"
-  NetworkAclPrivate:
-    Type: 'AWS::EC2::NetworkAcl'
-    Properties:
-      VpcId: !Ref ProjectVPC
-      Tags:
-      - Key: "Name"
-        Value: "Private"
+  # NetworkAclPrivate:
+  #   Type: 'AWS::EC2::NetworkAcl'
+  #   Properties:
+  #     VpcId: !Ref ProjectVPC
+  #     Tags:
+  #     - Key: "Name"
+  #       Value: "Private"
 
    ## NACL Association to subnets
   SubnetNetworkAclAssociationAPublic:
@@ -217,17 +217,17 @@ Resources:
       SubnetId: !Ref PublicSubnet2
       NetworkAclId: !Ref NetworkAclPublic
   
-  SubnetNetworkAclAssociationAPrivate:
-    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
-    Properties:
-      SubnetId: !Ref PrivateSubnet1
-      NetworkAclId: !Ref NetworkAclPrivate
+  # SubnetNetworkAclAssociationAPrivate:
+  #   Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+  #   Properties:
+  #     SubnetId: !Ref PrivateSubnet1
+  #     NetworkAclId: !Ref NetworkAclPrivate
 
-  SubnetNetworkAclAssociationBPrivate:
-    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
-    Properties:
-      SubnetId: !Ref PrivateSubnet2
-      NetworkAclId: !Ref NetworkAclPrivate
+  # SubnetNetworkAclAssociationBPrivate:
+  #   Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+  #   Properties:
+  #     SubnetId: !Ref PrivateSubnet2
+  #     NetworkAclId: !Ref NetworkAclPrivate
 
   # NACL Rules
   NetworkAclEntryInPublicAllowAll:
@@ -250,25 +250,25 @@ Resources:
       Egress: true
       CidrBlock: '0.0.0.0/0'
 
-  NetworkAclEntryInPrivateAllowVPC:
-    Type: 'AWS::EC2::NetworkAclEntry'
-    Properties:
-      NetworkAclId: !Ref NetworkAclPrivate
-      RuleNumber: 100
-      Protocol: -1
-      RuleAction: allow
-      Egress: false
-      CidrBlock: '0.0.0.0/0'
+  # NetworkAclEntryInPrivateAllowVPC:
+  #   Type: 'AWS::EC2::NetworkAclEntry'
+  #   Properties:
+  #     NetworkAclId: !Ref NetworkAclPrivate
+  #     RuleNumber: 100
+  #     Protocol: -1
+  #     RuleAction: allow
+  #     Egress: false
+  #     CidrBlock: '0.0.0.0/0'
 
-  NetworkAclEntryOutPrivateAllowVPC:
-    Type: 'AWS::EC2::NetworkAclEntry'
-    Properties:
-      NetworkAclId: !Ref NetworkAclPrivate
-      RuleNumber: 100
-      Protocol: -1
-      RuleAction: allow
-      Egress: true
-      CidrBlock: '0.0.0.0/0'
+  # NetworkAclEntryOutPrivateAllowVPC:
+  #   Type: 'AWS::EC2::NetworkAclEntry'
+  #   Properties:
+  #     NetworkAclId: !Ref NetworkAclPrivate
+  #     RuleNumber: 100
+  #     Protocol: -1
+  #     RuleAction: allow
+  #     Egress: true
+  #     CidrBlock: '0.0.0.0/0'
 
   # Security Group for EC2
   WebSecurityGroup:  
@@ -304,22 +304,18 @@ Resources:
           ToPort: 443
           CidrIp: 0.0.0.0/0
 
-  # Security Group for DB
-  DBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: "MySQL SG"
-      GroupDescription: "Security group with allow EC2"
-      VpcId: !Ref ProjectVPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 3306
-          ToPort: 3306
-          SourceSecurityGroupId: !Ref WebSecurityGroup
-        - CidrIp: 0.0.0.0/0
-          IpProtocol: tcp
-          FromPort: 3306
-          ToPort: 3306
+  # # Security Group for DB
+  # DBSecurityGroup:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     GroupName: "MySQL SG"
+  #     GroupDescription: "Security group with allow EC2"
+  #     VpcId: !Ref ProjectVPC
+  #     SecurityGroupIngress:
+  #       - IpProtocol: tcp
+  #         FromPort: 3306
+  #         ToPort: 3306
+  #         SourceSecurityGroupId: !Ref WebSecurityGroup
 
 ######################
 # Outputs section
@@ -341,11 +337,11 @@ Outputs:
   PublicSubnet2:
     Value: !Ref PublicSubnet2
 
-  PrivateSubnet1:
-    Value: !Ref PrivateSubnet1
+  # PrivateSubnet1:
+  #   Value: !Ref PrivateSubnet1
 
-  PrivateSubnet2:
-    Value: !Ref PrivateSubnet2
+  # PrivateSubnet2:
+  #   Value: !Ref PrivateSubnet2
 
   WebSG:
     Value: !Ref WebSecurityGroup
@@ -353,6 +349,6 @@ Outputs:
   ALBSG:
     Value: !Ref ALBSecurityGroup
 
-  DBSG:
-    Value: !Ref DBSecurityGroup
+  # DBSG:
+  #   Value: !Ref DBSecurityGroup
   

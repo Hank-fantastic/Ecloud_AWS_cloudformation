@@ -12,29 +12,49 @@ Description: >-
 
 Parameters:
 
-  NetworkStackName:
-    Description: >-
-      Name of an active CloudFormation stack that contains the networking
-      resources, such as the VPC and subnet that will be used in this stack.
-    Type: String
-    MinLength: 1
-    MaxLength: 255
-    AllowedPattern: '^[a-zA-Z][-a-zA-Z0-9]*$'
-    Default: VPC
+  VPCId:
+    Description: The VPC ID
+    Type: AWS::EC2::VPC::Id
 
-  StackName:
-    Description: export RDS resources
-    Type: String
-    Default: RDS
+  AvailabilityZone1:
+    Description: The Availability Zone for your Public Subnet 1 and Private Subnet 1
+    Type: AWS::EC2::AvailabilityZone::Name
+  
+  AvailabilityZone2:
+    Description: The Availability Zone for your Public Subnet 2 and Private Subnet 2
+    Type: AWS::EC2::AvailabilityZone::Name
 
-  SSHLocation:
-    Description: The IP address range that can be used to SSH to the EC2 instances
-    Type: String
-    MinLength: 9
-    MaxLength: 18
-    Default: 0.0.0.0/0
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
-    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  PublicSubnet1:
+    Description: The Subnet ID
+    Type: AWS::EC2::Subnet::Id
+
+  PublicSubnet2:
+    Description: The Subnet ID
+    Type: AWS::EC2::Subnet::Id
+  
+  WebSecurityGroup:  
+    Description: Web Security Group
+    Type: AWS::EC2::SecurityGroup::Id
+
+  ALBSecurityGroup:
+    Description: ALB Security Group
+    Type: AWS::EC2::SecurityGroup::Id
+
+  # DBName:
+  #   Type: String
+  #   Description: Your DB name
+
+  # DBUserName:
+  #   Type: String
+  #   Description: Your DB username
+
+  # DBPassword:
+  #   Type: String
+  #   Description: Your DB password
+
+  # RDSEndpoint:
+  #   Description: 'The connection endpoint for the database.'
+  #   Type: String
 
   KeyName:
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
@@ -48,8 +68,7 @@ Parameters:
       t3.micro, t3.small, t3.medium, t3.large,]
 
   LatestAmiId:
-    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+    Type: String
     Description: Choose your AMI ID
 
   AutoScalingGroupMinSize: 
@@ -76,17 +95,14 @@ Resources:
   # Auto Scaling Group
   WebServerGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
-    DependsOn: ALBListener
     Properties:
       AutoScalingGroupName: WebServerGroup
       AvailabilityZones:
-      - Fn::ImportValue: !Sub ${NetworkStackName}-AZ1
-      - Fn::ImportValue: !Sub ${NetworkStackName}-AZ2
-      # - !Select [ 0, !GetAZs '' ]
-      # - !Select [ 1, !GetAZs '' ]
+      - !Ref AvailabilityZone1
+      - !Ref AvailabilityZone2
       VPCZoneIdentifier:
-      - Fn::ImportValue: !Sub ${NetworkStackName}-PublicSubnet1
-      - Fn::ImportValue: !Sub ${NetworkStackName}-PublicSubnet2
+      - !Ref PublicSubnet1
+      - !Ref PublicSubnet2
       LaunchConfigurationName: !Ref LaunchConfig
       DesiredCapacity: !Ref AutoScalingGroupDesiredSize
       MinSize: !Ref AutoScalingGroupMinSize
@@ -97,6 +113,10 @@ Resources:
       - Key: Name
         Value: 'vpc-stack-ASG'
         PropagateAtLaunch: 'true'
+    CreationPolicy:
+      ResourceSignal:
+        Count: '1'
+        Timeout: PT07M
   
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
@@ -104,37 +124,47 @@ Resources:
       AssociatePublicIpAddress: true
       ImageId: !Ref LatestAmiId
       InstanceType: !Ref InstanceType
+      IamInstanceProfile: 'arn:aws:iam::959074604313:instance-profile/LaunchConfigRole'
       KeyName: !Ref KeyName
       SecurityGroups:
-      - Fn::ImportValue: !Sub ${NetworkStackName}-WebSG
+      - !Ref WebSecurityGroup
       SpotPrice: 0.0045
       UserData:
-        Fn::Base64: 
+        Fn::Base64:
           !Sub 
           - |
             #!/bin/bash
             yum update -y
             yum install git -y
+            aws s3 cp s3://ecloudgamelley/id_rsa ~/.ssh/id_rsa
+            aws s3 cp s3://ecloudgamelley/id_rsa.pub ~/.ssh/id_rsa.pub
+            chmod 700 -R ~/.ssh/
+            eval `ssh-agent -s`
+            ssh-add ~/.ssh/id_rsa
+            ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+            ssh-keygen -Hf ~/.ssh/known_hosts
             cd /home/ec2-user
-            git clone https://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@github.com/repc18/ecloudgamelley.git
+            git clone git@github.com:repc18/ecloudgamelley.git
             cd ecloudgamelley
             yum install -y python3-devel gcc mysql-devel mysql-server libmysqlclient-dev
             pip3 install -r requirements.txt
-            echo mysql+pymysql://${DBUsername}:${DBPassword}@${RDSEndpoint}:3306/${DBName} > endpoint.txt
+            echo mysql+pymysql://admin:groupGGG@ecloudgamelley.cyouepm29jhv.us-east-1.rds.amazonaws.com:3306/ecloudgamelley > endpoint.txt
             export SQLALCHEMY_DATABASE_URI=$(cat endpoint.txt)
-            python3 ecloudgamelly.py
-          - RDSEndpoint:
-              Fn::ImportValue: 
-                !Sub ${StackName}-RDSEndpoint
-            DBUsername:
-              Fn::ImportValue: 
-                !Sub ${StackName}-DBusername
-            DBPassword:
-              Fn::ImportValue: 
-                !Sub ${StackName}-RDSDBpassword
-            DBName:
-              Fn::ImportValue: 
-                !Sub ${StackName}-DBname
+            nohup python3 ecloudgamelly.py > Output.out 2> Error.err < /dev/null &
+            /opt/aws/bin/cfn-signal -e $? --stack ${StackName} --resource WebServerGroup --region ${Region}
+          - StackName:
+              !Ref 'AWS::StackName'
+            Region:
+              !Ref 'AWS::Region'
+          # - RDSEndpoint:
+          #     !Ref RDSEndpoint
+          #   DBUsername:
+          #     !Ref DBUserName
+          #   DBPassword:
+          #     !Ref DBPassword
+          #   DBName:
+          #     !Ref DBName
+            
 
     # DependsOn:
     # - "DBInstance"
@@ -204,13 +234,15 @@ Resources:
   #ALB
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn:
+      - "WebServerGroup"
     Properties:
       Scheme: internet-facing
       Subnets: 
-        - Fn::ImportValue: !Sub ${NetworkStackName}-PublicSubnet1
-        - Fn::ImportValue: !Sub ${NetworkStackName}-PublicSubnet2
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
       SecurityGroups:
-        - Fn::ImportValue: !Sub ${NetworkStackName}-ALBSG
+        - !Ref ALBSecurityGroup
 
   ALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -235,9 +267,7 @@ Resources:
       HealthCheckPath: /
       Port: 80
       Protocol: HTTP
-      VpcId: 
-        Fn::ImportValue: 
-          !Sub ${NetworkStackName}-VPC
+      VpcId: !Ref VPCId
 
   Route53RecordSet:
     Type: AWS::Route53::RecordSet
@@ -246,11 +276,12 @@ Resources:
         DNSName: !GetAtt ApplicationLoadBalancer.DNSName
         HostedZoneId: !GetAtt ApplicationLoadBalancer.CanonicalHostedZoneID
         EvaluateTargetHealth: true
+      # depends on your hosted zone 
       HostedZoneId: 'Z0681649J86O5EZMSKRH'
       Name: 'www.ecloudgamelley.com'
       Type: 'A'
       Failover: 'PRIMARY'
-
+      SetIdentifier: 'aws-alb-record'
 
 ######################
 # Outputs section
