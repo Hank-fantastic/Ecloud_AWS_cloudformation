@@ -382,6 +382,11 @@ Resources:
       - Key: Name
         Value: !Ref EC2tagName
         PropagateAtLaunch: 'true'
+    CreationPolicy:
+      ResourceSignal:
+        Count: 1
+        Timeout: PT07M
+
   
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
@@ -396,7 +401,8 @@ Resources:
       SpotPrice: 0.0045
       UserData:
         Fn::Base64: 
-         !Sub |
+          !Sub 
+          - |
             #!/bin/bash -xe
             cd /home/ec2-user
             sudo yum install ruby -y
@@ -406,6 +412,11 @@ Resources:
             sudo ./install auto
             sudo service codedeploy-agent start
             sudo service codedeploy-agent status
+            /opt/aws/bin/cfn-signal -e $? --stack ${StackName} --resource WebServerGroup --region ${Region}
+          - StackName:
+                !Ref 'AWS::StackName'
+            Region:
+                !Ref 'AWS::Region'
 
     # DependsOn:
     # - "DBInstance"
@@ -554,9 +565,6 @@ Resources:
       DeploymentStyle: 
         DeploymentType: IN_PLACE
         DeploymentOption: WITHOUT_TRAFFIC_CONTROL
-      LoadBalancerInfo:
-        ElbInfoList:
-          - Name: ApplicationLoadBalancer
       ServiceRoleArn: arn:aws:iam::959074604313:role/CodeDeployServiceRole
     DependsOn: WebServerGroup
 
