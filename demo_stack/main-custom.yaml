@@ -1,0 +1,292 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Nested-stack main.yaml
+
+######################
+#Parameters Section
+######################
+
+#VPC Parameters
+Parameters:
+  SSHLocation:
+    Type: String
+    Description: The IP address range that can be used to SSH to the EC2 instances
+    MinLength: 9
+    MaxLength: 18
+    Default: 0.0.0.0/0
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  VPCCidrBlock:
+    Type: String
+    Description: The IP address range for the VPC
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.0.0/16
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  
+  AvailabilityZone1:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: The Availability Zone for your Public Subnet 1 and Private Subnet 1
+  
+  AvailabilityZone2:
+    Description: The Availability Zone for your Public Subnet 2 and Private Subnet 2
+    Type: AWS::EC2::AvailabilityZone::Name
+
+  PublicSubnet1CidrBlock:
+    Type: String
+    Description: The IP address range for the Public Subnet 1
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.0.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  PublicSubnet2CidrBlock:
+    Type: String
+    Description: The IP address range for the Public Subnet 2
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.0.128.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  # PrivateSubnet1CidrBlock:
+  #   Type: String
+  #   Description: The IP address range for the Private Subnet 1
+  #   MinLength: 9
+  #   MaxLength: 18
+  #   Default: 10.0.1.0/24
+  #   AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+  #   ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  
+  # PrivateSubnet2CidrBlock:
+  #   Type: String
+  #   Description: The IP address range for the Private Subnet 2
+  #   MinLength: 9
+  #   MaxLength: 18
+  #   Default: 10.0.129.0/24
+  #   AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+  #   ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+
+
+  # #RDS Parameters
+  # RDSInstanceType:
+  #   Type: String
+  #   Description: Select RDS Instance Type
+  #   AllowedValues: [db.t2.micro, db.t2.small, db.t2.medium, db.t2.large,
+  #     db.t3.micro, db.t3.small, db.t3.medium, db.t3.large,]
+  #   Default: db.t2.micro
+
+  # DBAllocatedStorage:
+  #   Type: Number
+  #   Description: >-
+  #     The allocated storage size, specified in GB (ignored when DBSnapshotIdentifier is set, value used from snapshot).
+  #   Default: 20
+  #   MinValue: 5
+  #   MaxValue: 30
+  
+  # EngineVersion:
+  #   Type: String
+  #   Description: 'MySQL version.'
+  #   Default: '5.7.21'
+  #   AllowedValues: ['8.0.15', '5.7.25', '5.7.21', '5.6.41', '5.5.61']
+
+  # RDSDBName:
+  #   Type: String
+  #   Description: Your DB name
+  #   Default: 'ecloudformation'
+
+  # RDSMasterUserName:
+  #   Type: String
+  #   Description: Your DB username
+  #   Default: 'admin'
+  # RDSMasterPassword:
+  #   Type: String
+  #   Description: Your DB password
+  #   NoEcho: true
+  #   Default: ''
+  
+
+  #EC2 Parameters
+  KeyName:
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+
+  InstanceType:
+    Type: String
+    Description: Select Instance Type
+    AllowedValues: [t2.micro, t2.small, t2.medium, t2.large,
+      t3.micro, t3.small, t3.medium, t3.large,]
+
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+    Description: Choose your AMI ID
+
+  AutoScalingGroupMinSize: 
+    Type: Number
+    Description: Minimum size of Group ASG.
+    Default: 1
+
+  AutoScalingGroupDesiredSize: 
+    Type: Number
+    Description: Desired size of Group ASG.
+    Default: 1
+    
+  AutoScalingGroupMaxSize: 
+    Type: Number
+    Description: Maximum size of Group ASG.
+    Default: 2
+
+######################
+#Resources Section
+######################
+
+Resources:
+  VPC:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://ecloudgamelley.s3.amazonaws.com/demo/vpc.yaml
+      Parameters:
+        SSHLocation: !Ref SSHLocation
+        VPCCidrBlock: !Ref VPCCidrBlock
+        AvailabilityZone1: !Ref AvailabilityZone1
+        AvailabilityZone2: !Ref AvailabilityZone2
+        PublicSubnet1CidrBlock: !Ref PublicSubnet1CidrBlock
+        PublicSubnet2CidrBlock: !Ref PublicSubnet2CidrBlock
+        # PrivateSubnet1CidrBlock: !Ref PrivateSubnet1CidrBlock
+        # PrivateSubnet2CidrBlock: !Ref PrivateSubnet2CidrBlock
+
+  # RDS:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: https://ecloudgamelley.s3.amazonaws.com/rds-nest.yml
+  #     Parameters:
+  #       PrivateSubnet1: !GetAtt VPC.Outputs.PrivateSubnet1
+  #       PrivateSubnet2: !GetAtt VPC.Outputs.PrivateSubnet2
+  #       DBnetworkSG: !GetAtt VPC.Outputs.DBSG
+  #       RDSInstanceType: !Ref RDSInstanceType
+  #       DBAllocatedStorage: !Ref DBAllocatedStorage
+  #       EngineVersion: !Ref EngineVersion
+  #       RDSDBName: !Ref RDSDBName
+  #       RDSMasterUserName: !Ref RDSMasterUserName
+  #       RDSMasterPassword: !Ref RDSMasterPassword
+
+
+  ASGALB:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://ecloudgamelley.s3.amazonaws.com/demo/asgalb_nested.yaml
+      Parameters:
+        VPCId: !GetAtt VPC.Outputs.VPC
+        AvailabilityZone1: !GetAtt VPC.Outputs.AvailabilityZone1
+        AvailabilityZone2: !GetAtt VPC.Outputs.AvailabilityZone2
+        PublicSubnet1: !GetAtt VPC.Outputs.PublicSubnet1
+        PublicSubnet2: !GetAtt VPC.Outputs.PublicSubnet2
+        WebSecurityGroup: !GetAtt VPC.Outputs.WebSG
+        ALBSecurityGroup: !GetAtt VPC.Outputs.ALBSG
+        # DBName: !GetAtt RDS.Outputs.DBname
+        # DBUserName: !GetAtt RDS.Outputs.DBusername
+        # DBPassword: !GetAtt RDS.Outputs.DBpassword
+        # RDSEndpoint: !GetAtt RDS.Outputs.RDSEndpoint
+        KeyName: !Ref KeyName
+        InstanceType: !Ref InstanceType
+        LatestAmiId: !Ref LatestAmiId
+        AutoScalingGroupMinSize: !Ref AutoScalingGroupMinSize
+        AutoScalingGroupDesiredSize: !Ref AutoScalingGroupDesiredSize
+        AutoScalingGroupMaxSize: !Ref AutoScalingGroupMaxSize
+  
+  StackCreationLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+
+          def lambda_handler(event, context):
+            cf_client = boto3.client('cloudformation')
+    
+            response = {}
+            print(event)
+            if event['RequestType'] == 'Delete':
+              cf_client.create_stack(
+                StackName='LambdaCreatedStack',
+                TemplateURL='https://ecloudgamelley.s3.amazonaws.com/demo/main.yaml',
+                Parameters=[
+                  {
+                    'ParameterKey': 'SSHLocation',
+                    'ParameterValue': '0.0.0.0/0'
+                  },
+                  {
+                    'ParameterKey': 'VPCCidrBlock',
+                    'ParameterValue': '10.0.0.0/16'
+                  },
+                  {
+                    'ParameterKey': 'AvailabilityZone1',
+                    'ParameterValue': 'us-east-1a'
+                  },
+                  {
+                    'ParameterKey': 'AvailabilityZone2',
+                    'ParameterValue': 'us-east-1b'
+                  },
+                  {
+                    'ParameterKey': 'PublicSubnet1CidrBlock',
+                    'ParameterValue': '10.0.0.0/24'
+                  },
+                  {
+                    'ParameterKey': 'PublicSubnet2CidrBlock',
+                    'ParameterValue': '10.0.128.0/24'
+                  },
+                  {
+                    'ParameterKey': 'KeyName',
+                    'ParameterValue': 'deployment_test'
+                  },
+                  {
+                    'ParameterKey': 'InstanceType',
+                    'ParameterValue': 't2.micro'
+                  },
+                  {
+                    'ParameterKey': 'LatestAmiId',
+                    'ParameterValue': '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2',
+                    'ResolvedValue': 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+                  },
+                  {
+                    'ParameterKey': 'AutoScalingGroupMinSize',
+                    'ParameterValue': '1'
+                  },
+                  {
+                    'ParameterKey': 'AutoScalingGroupDesiredSize',
+                    'ParameterValue': '1'
+                  },
+                  {
+                    'ParameterKey': 'AutoScalingGroupMaxSize',
+                    'ParameterValue': '2'
+                  }
+                ],
+                OnFailure='ROLLBACK',
+                Tags=[
+                  {
+                    'Key': 'Description',
+                    'Value': 'Created by Lambda function'
+                  }
+                ],
+                ClientRequestToken='LambdaCreateStack',
+                Capabilities=['CAPABILITY_IAM','CAPABILITY_AUTO_EXPAND',],
+              )
+              response['Output'] = 'Delete event.'
+            elif event['RequestType'] == 'Create':
+              response['Output'] = 'Create event.'
+        
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, response)
+      Handler: 'index.lambda_handler'
+      Runtime: 'python3.9'
+      Role: 'arn:aws:iam::959074604313:role/LambdaCloudFormation'
+
+  LambdaHandler:
+    Type: 'Custom::LambdaDeleteHandler'
+    Properties:
+      ServiceToken: !GetAtt StackCreationLambda.Arn
